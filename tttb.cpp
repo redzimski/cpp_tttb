@@ -1,72 +1,137 @@
-/* Some of this code was based on the hello_world.cc example
-at https://github.com/hosseinmoein/DataFrame/blob/master/
-examples/hello_world.cc . */
-
-#include <DataFrame/DataFrame.h>
+#include "csv.hpp" 
 #include <iostream>
+using namespace csv;
 
-using namespace hmdf;
-using LDataFrame = StdDataFrame<long>;
-/* This DataFrame type isn't present in the Hello World file,
-but I decided to make the index column the same 'long' type
-as most of the other columns. Hence, I needed to initialize
-the DataFrame type using <long> rather than <ulong> (which would
-have raised the following error:
-terminate called after throwing an instance of 'std::bad_any_cast') */
+/* Defining a struct that can represent each row
+of CPDB_for_TTTB.csv (the .csv file containing all
+Bible verses:) */
 
-
+struct Verse_Row {
+    int verse_id;
+    std::string ot_nt;
+    std::string book;
+    int book_num;
+    std::string chapter_num; // This is actually a string, since
+    // some values are 'P' (for 'prologue').
+    int verse_num;
+    std::string verse_code;
+    std::string verse;
+    int characters;
+    int typed;
+    double best_wpm;
+};
 
 int main() {
 
-LDataFrame df_Bible;
-df_Bible.read("../Files/CPDB_for_TTTB.csv", io_format::csv2);
-std::cout << "Imported Bible .csv file successfully.\n";
- 
-std::cout << df_Bible.get_index().size() << "Verses have been imported.";
 
-/* Saving a copy of this DataFrame to a .csv file for 
+// Creating a vector that can store all of the Bible verses:
+
+std::vector<Verse_Row> vrv; // vrv is short for 'Verse Row vector.'
+
+/* Reading data:
+This code was based largely on 
+https://github.com/vincentlaucsb/csv-parser?tab=
+readme-ov-file#indexing-by-column-names
+and on
+page 22 of A Tour of C++, 2nd Edition by Bjarne Stroustrup. */
+std::string verses_file_path = "../Files/CPDB_for_TTTB.csv";
+CSVReader reader(verses_file_path);
+for (auto& row: reader) {
+    Verse_Row vr;
+    vr.verse_id = row["Verse_ID"].get<int>();
+    vr.ot_nt = row["OT_NT"].get<std::string>();
+    vr.book = row["Book"].get<std::string>();
+    vr.book_num = row["Book_Num"].get<int>();
+    vr.chapter_num = row["Chapter_Num"].get<std::string>();
+    vr.verse_num = row["Verse_Num"].get<int>();
+    vr.verse_code = row["Verse_Code"].get<std::string>();
+    vr.verse = row["Verse"].get<std::string>();
+    vr.characters = row["Characters"].get<int>();
+    vr.typed = row["Typed"].get<int>();
+    vr.best_wpm = row["Best_WPM"].get<double>();
+    vrv.push_back(vr);
+}
+
+std::cout << "Imported Bible .csv file successfully.\n";
+std::cout << "Number of verses imported: " << vrv.size() << "\n";
+
+// Creating a list of unread verses (in the form of vrv indices):
+// (Maybe pointers to verses could be used here instead?)
+
+std::vector<int> untyped_verse_indices;
+
+for (int i=0; i <vrv.size(); ++i) {
+    if (vrv[i].typed == 0) {
+    untyped_verse_indices.push_back(i);}
+    };
+
+std::cout << untyped_verse_indices.size() << " verses have not yet \
+been typed.\n"; 
+
+if (untyped_verse_indices.size() > 0) {
+std::cout << "Here is the next verse that hasn't been typed:\n";
+std::cout << vrv[untyped_verse_indices[0]].verse << "\n";
+}
+
+/* Saving the updated copy of our table of verses to a .csv file for 
 testing purposes: */
 
-df_Bible.write<long, double, std::string, 
-std::size_t>("../Files/CPDB_for_TTTB_from_program.csv", 
-io_format::csv2);
+/* This section was based on the documentation found at
+https://github.com/vincentlaucsb/csv-parser?
+tab=readme-ov-file#writing-csv-files
+and 
+https://vincela.com/csv/classcsv_1_1DelimWriter.html .*/
 
 
-// Creating a filtered copy of df_Bible that shows only
-// untyped verses: (that way, the user can start at the first 
-// verse that hasn't yet been typed.)
+std::ofstream verse_output_filename {verses_file_path};
+auto verses_writer = make_csv_writer(verse_output_filename);
 
-// Creating a selector object that can then be passed to
-// get_data_by_sel:
-// The 'long &' type refers to the index; the 'long &val' refers
-// to the column (in this case, 'Typed') by which we want to filter
-// the DataFrame.
-auto untyped_selector = [](const long &, const long &val)-> bool {
-    return (val == 0);
+    // Writing header row to .csv file:
+    // It's crucial that the order of these rows matches the order
+    // of the corresponding field entries within cols_as_strings.
+    std::vector<std::string> header_row = {
+    "Verse_ID",
+    "OT_NT",
+    "Book",
+    "Book_Num",
+    "Chapter_Num",
+    "Verse_Num",
+    "Verse_Code",
+    "Verse",
+    "Characters",
+    "Typed",
+    "Best_WPM"};
+
+    // Writing this header to the .csv file:
+    verses_writer << header_row;
+    
+    // Converting the fields within each row into a vector
+    // of strings:
+    // See 
+    // https://stackoverflow.com/a/23855901/13097194
+    // (which actualy recommends a potentially better solution
+    // outside of the stanard library) for to_string().
+    for (int i=0; i < vrv.size(); ++i) {
+    std::vector<std::string> cols_as_strings = {
+    std::to_string(vrv[i].verse_id),
+    vrv[i].ot_nt,
+    vrv[i].book,
+    std::to_string(vrv[i].book_num),
+    vrv[i].chapter_num,
+    std::to_string(vrv[i].verse_num),
+    vrv[i].verse_code,
+    vrv[i].verse,
+    std::to_string(vrv[i].characters),
+    std::to_string(vrv[i].typed),
+    std::to_string(vrv[i].best_wpm)
     };
-/* Calling get_data_by_sel():
-The first 'long' type refers to the type of the 'Typed' 
-value by which to filter the DataFrame; the subsequent 3 types
-(double, long, and std::string) encompass all types of the
-DataFrame. Based on the documentation (see links below), I think
-I need to enter long both before and after the decltype() argument.
-(See https://github.com/hosseinmoein/DataFrame/blob/master/
-examples/hello_world.cc) and 
-https://htmlpreview.github.io/?https://github.com/hosseinmoein/
-DataFrame/blob/master/docs/HTML/get_data_by_sel.html
-for more details on this function. */
-auto df_Bible_untyped = df_Bible.get_data_by_sel<long, 
-decltype(untyped_selector), double, long, std::string>(
-"Typed", untyped_selector);
+    verses_writer << cols_as_strings;
+    };
 
-std::cout << df_Bible_untyped.get_index().size() << "Verses still \
-need to be typed.";
 
-std::cout << "Finished running script";
 
-// Writing df_Bible_untyped to a .csv file for debugging purposes:
-df_Bible_untyped.write<long, double, std::string, 
-std::size_t>("../Files/untyped_verses.csv", 
-io_format::csv2);
+
+
+std::cout << "Finished running program.";
 
 }

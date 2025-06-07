@@ -4,3 +4,5 @@ Text_files_copied_from_sacredbibledotorg
 bible_file_creator.ipynb
 build/
 Files/.~lock.CPDB_for_TTTB_from_program.csv#
+tttb_hmdf_version.cpp
+Catholic_Public_Domain_Bible/CPDB_for_TTTB_hmdf.csv
