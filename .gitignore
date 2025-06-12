@@ -6,3 +6,9 @@ build/
 Files/.~lock.CPDB_for_TTTB_from_program.csv#
 tttb_hmdf_version.cpp
 Catholic_Public_Domain_Bible/CPDB_for_TTTB_hmdf.csv
+CMakeLists_for_module.txt
+time_testing
+time_testing.cpp
+tttb_with_modules.cpp
+typing_test_module.cpp
+.vscode/tasks.json

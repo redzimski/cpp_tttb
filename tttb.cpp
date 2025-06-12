@@ -13,6 +13,8 @@ This code also makes use of the following open-source libraries:
 2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)*/
 
 #include <iostream>
+#include <ctime>
+#include <chrono>
 #include "csv.hpp" 
 #include "cpp-terminal/terminal.hpp"
 #include "cpp-terminal/color.hpp"
@@ -26,7 +28,6 @@ This code also makes use of the following open-source libraries:
 #include "cpp-terminal/terminal.hpp"
 #include "cpp-terminal/tty.hpp"
 #include "cpp-terminal/version.hpp"
-#include <chrono>
 using namespace csv;
 
 /* Defining a struct that can represent each row
@@ -50,7 +51,11 @@ struct Verse_Row {
 
 
 // Defining a struct that can store relevant test result data:
-struct Test_Result {
+struct Test_Result_Row {
+    long unix_test_end_time;
+    std::string local_test_end_time;
+    int verse_id;
+    std::string verse;
     double wpm;
     double test_seconds;
     bool completed_test;
@@ -61,7 +66,8 @@ struct Test_Result {
 
 
 
-Test_Result run_test(std::string verse, int verse_length) 
+Test_Result_Row run_test(int verse_id, 
+std::string verse, int verse_length) 
     {
 /* Some of the following code was based on the documentation at
 https://github.com/jupyter-xeus/cpp-terminal/blob/
@@ -214,6 +220,14 @@ default: break;
 auto end_time = std::chrono::high_resolution_clock::now();
 auto test_seconds = std::chrono::duration<double>(
     end_time - start_time).count();
+/* The following time variable initialization code was based in part 
+on https://en.cppreference.com/w/cpp/chrono/system_clock/now.html . */
+std::time_t unix_test_end_time = std::chrono::
+system_clock::to_time_t(end_time);
+long unix_test_end_time_as_long = long(unix_test_end_time);
+// Creating a string version of this timestamp that shows
+// the user's local time:
+std::string local_time_string = std::ctime(&unix_test_end_time);
 
 double wpm = (verse_length / test_seconds) * 12; /* To calculate WPM,
 we begin with characters per second, then multiply by 60 (to go
@@ -230,19 +244,26 @@ else
     }
 
 
-Test_Result tr;
-tr.wpm = wpm;
-tr.test_seconds = test_seconds;
-tr.completed_test = completed_test;
+Test_Result_Row trr;
+trr.unix_test_end_time = unix_test_end_time_as_long;
+trr.local_test_end_time = local_time_string;
+trr.verse_id = verse_id;
+trr.verse = verse;
+trr.wpm = wpm;
+trr.test_seconds = test_seconds;
+trr.completed_test = completed_test;
+// Make sure to add a datetime entry here also (either Unix 
+// time or local time--or, ideally, both)
 
-    return tr;
+    return trr;
     }
 
 
 int main() {
 
 
-// Creating a vector that can store all of the Bible verses:
+// Creating a vector that can store all of the Bible verses found
+// within CPDB_for_TTTB.csv:
 
 std::vector<Verse_Row> vrv; // vrv is short for 'Verse Row vector.'
 
@@ -272,6 +293,26 @@ for (auto& row: reader) {
 
 std::cout << "Imported Bible .csv file successfully.\n";
 std::cout << "Number of verses imported: " << vrv.size() << "\n";
+
+std::vector<Test_Result_Row> trrv; // trrv is short for 
+// 'Test result row vector.'
+
+
+std::string test_results_file_path = "../Files/test_results.csv";
+CSVReader test_results_reader(test_results_file_path);
+for (auto& row: test_results_reader) {
+    Test_Result_Row trr;
+    trr.unix_test_end_time = row["Unix_Test_End_Time"].get<long>();
+    trr.local_test_end_time = row["Local_Test_End_Time"].get<>();
+    trr.verse_id = row["Verse_ID"].get<int>();
+    trr.verse = row["Verse"].get<>();
+    trr.wpm = row["WPM"].get<double>();
+    trr.test_seconds = row["Test_Seconds"].get<double>();
+    trr.completed_test = 1; // Essentially a placeholder, though
+    // it *is* accurate to say that these tests were completed.
+    trrv.push_back(trr);
+}
+
 
 // Creating a list of unread verses (in the form of vrv indices):
 // (Maybe pointers to verses could be used here instead?)
@@ -308,10 +349,12 @@ if (user_response == "n")
 // a reference to the row rather than a copy thereof.
 Verse_Row next_untyped_verse_row = vrv[
     untyped_verse_indices[untyped_verse_iterator]];
+int next_verse_id = next_untyped_verse_row.verse_id;
 std::string next_verse = next_untyped_verse_row.verse;
 int next_verse_length = next_untyped_verse_row.characters;
 
-Test_Result tres = run_test(next_verse, next_verse_length);
+Test_Result_Row tres = run_test(next_verse_id, 
+next_verse, next_verse_length);
 
 // Adding results of the test to vrv so that it can later get added
 // to our .csv file:
@@ -328,12 +371,16 @@ if (tres.wpm > vrv[untyped_verse_indices[
 vrv[untyped_verse_indices[
     untyped_verse_iterator]].best_wpm = tres.wpm;}
 untyped_verse_iterator++; 
+
+// Adding information about this test to our vector of test result
+// rows:
+trrv.push_back(tres);
 }
 }
 
 
 else if (user_response == "e")
-{std::cout << "Exiting typing test.";
+{std::cout << "Exiting typing test.\n";
     // break;
     }
 // Advancing our untyped verse iterator by 1 so that we can access
@@ -399,8 +446,33 @@ auto verses_writer = make_csv_writer(verse_output_filename);
 
 
 
+std::ofstream test_results_output_filename {test_results_file_path};
+auto test_results_writer = make_csv_writer(
+    test_results_output_filename);
 
+    header_row = {
+    "Unix_Test_End_Time",
+    "Local_Test_End_Time",
+    "Verse_ID",
+    "Verse",
+    "WPM",
+    "Test_Seconds"};
 
-std::cout << "Finished running program.";
+    // Writing this header to the .csv file:
+    test_results_writer << header_row;
+    
+    for (int i=0; i < trrv.size(); ++i) {
+    std::vector<std::string> cols_as_strings = {
+    std::to_string(trrv[i].unix_test_end_time),
+    trrv[i].local_test_end_time,
+    std::to_string(trrv[i].verse_id),
+    trrv[i].verse,
+    std::to_string(trrv[i].wpm),
+    std::to_string(trrv[i].test_seconds)
+    };
+    test_results_writer << cols_as_strings;
+    };
+
+std::cout << "Quitting program.";
 
 }
