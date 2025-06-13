@@ -10,7 +10,18 @@ https://github.com/kburchfiel/cpp_tttb
 This code also makes use of the following open-source libraries:
 
 1. Vincent La's CSV parser (https://github.com/vincentlaucsb/csv-parser)
-2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)*/
+2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)
+
+In addition, this program uses the Catholic Public Domain Version
+of the Bible that Ronald L. Conte put together. This Bible can be 
+found at https://sacredbible.org/catholic/ I last updated my local
+copy of this Bible (whose text does get updated periodically)
+around June 10, 2025.
+
+Blessed Carlo Acutis, pray for us!
+*/
+
+
 
 #include <iostream>
 #include <ctime>
@@ -51,6 +62,11 @@ struct Verse_Row {
 
 
 // Defining a struct that can store relevant test result data:
+// (Since this data will be used to populate all rows within
+// the test results CSV file, it will need to include all
+// of the rows within that file as well. However, not all of 
+// the attributes stored here will actually end up within
+// that file.)
 struct Test_Result_Row {
     long unix_test_end_time;
     std::string local_test_end_time;
@@ -59,6 +75,8 @@ struct Test_Result_Row {
     double wpm;
     double test_seconds;
     bool completed_test;
+    double error_rate;
+    double error_and_backspace_rate;
     // This struct will be expanded to include accuracy data,
     // the time the test was started and finished, and possibly other
     // items also. 
@@ -121,6 +139,13 @@ default: break;
     }
 };
 
+// Initializing counters that will keep track of the number of
+// errors the user made:
+// (One of these counters won't count backspaces as errors;
+// the other will.)
+int error_counter = 0;
+int backspace_counter = 0;
+
 // Starting our timing clock: 
 // (This code was based on p. 1010 of The C++ Programming Language,
 // 4th edition.)
@@ -154,9 +179,14 @@ else if (keyname == "Ctrl+C")
 {exit_test = true;
 completed_test = false;
 }
+
 else if (keyname == "Backspace") // We'll need to remove the 
 // last character from our string.
 {user_string = user_string.substr(0, user_string.length() -1);
+backspace_counter++; // Since the user pressed backspace,
+// we'll need to increment this counter by 1 so that this
+// keypress can get reflected within our error_and_backspace_counter
+// value.
 }
 // For documentation on substr, see
 // https://cppscripts.com/string-slicing-cpp
@@ -169,7 +199,7 @@ else if (keyname == "Alt+Del") // This behavior is similar to
 // as well, the loop will skip over it and search instead
 // for the second-to-last space. (That way, repeated Alt+Del
 // entries can successfully remove multiple words.)
-{
+{backspace_counter++; 
     for (int j = user_string.length() -1; j >= 0; --j)
     {
         if ((isspace(user_string[j])) && 
@@ -195,15 +225,32 @@ instead be colored red.*/
 auto print_color = Term::Color::Name::Default;
 if (user_string == verse.substr(0, user_string.length()))
 {print_color = Term::Color::Name::Green;}
-else
-{print_color = Term::Color::Name::Red;}
+else // The user made a mistake, as signified by the fact that
+// this string doesn't match the initial section of the verse that
+// has the same length.
+{print_color = Term::Color::Name::Red;
+if ((keyname != "Backspace") && (keyname != "Alt+Del")) {
+    // In this case, we'll increment our main error
+    // counter, as the user did not press Backspace.
+    // (This code may need to be updated to also address
+    // the use of Ctrl+Backspace, though on my Linux system,
+    // that combination also produces the name 'Backspace.')
+    error_counter++;
+}
+}
 /* To print the output, we'll first clear the entire screen and 
 move the cursor back to the top left. Next, we'll print both
 the original verse and the user's response so far. (This approach 
 greatly simplifies our code, as it prevents us from having to
 handle challenges like multi-verse output and moving from one 
 line to another. It really is simpler to just clear the sceren 
-and start anew after each keystroke.*/
+and start anew after each keystroke.
+
+Also note that, in order to debug this output, you'll want to add 
+relevant variables (such as backspace_counter) after these items 
+rather than earlier in the loop--as Term::clear_screen() will erase
+all other post-keypress output.*/
+
 Term::cout << Term::clear_screen() << Term::cursor_move(1,1) 
 << verse << std::endl << 
 Term::color_fg(print_color) << user_string 
@@ -227,22 +274,72 @@ system_clock::to_time_t(end_time);
 long unix_test_end_time_as_long = long(unix_test_end_time);
 // Creating a string version of this timestamp that shows
 // the user's local time:
-std::string local_time_string = std::ctime(&unix_test_end_time);
+// The following formatting code was based on the examples
+    // at
+    // https://en.cppreference.com/w/cpp/chrono/c/strftime
+    // I could also have used std::format(), but 
+    // this isn't available within older C++ implementations.
+    // (See https://en.cppreference.com/w/cpp/chrono/
+    // system_clock/formatter) for more information on that option.)
+    char strftime_container [25];
+    std::strftime(strftime_container,
+    25, "%FT%T%z", std::localtime(&unix_test_end_time));
+    std::string local_time_string = strftime_container;
+    // %F represents YYYY-MM-DD; %T represents 
+    // HH-MM-SS; and %z represents the local UTC offset
+    // (e.g. -0400 for Eastern Daylight Time in the US).
+    // (The T in between %F and %T helps differentiate
+    // between these two components.)
+    // Here's an example of what local_time_string might
+    // look like: 
+    // 2025-06-12T21:49:33-0400
+    // (This string is 24 chararcters long. I found that
+    // I needed to set strftime_container as one greater
+    // than this length in order for it to fit the entire
+    // timestamp.
 
 double wpm = (verse_length / test_seconds) * 12; /* To calculate WPM,
 we begin with characters per second, then multiply by 60 (to go
 from seconds to minutes) and divide by 5 (to go from characters
 to words using the latter's standard definition).*/
 
+/* Calculating error rates:
+These will be equal to the number of errors divided by 
+the number of verses. note that it's possible for 
+the rate to be above 100%. Another option would be to
+divide the number of erroneous keypresses by the number
+of keypresses, but this approach is a bit simpler.
+(Calculating these rates as (verse_length - 
+error_count)/verse_length) wouldn't be ideal, as we could then
+end up with a negative number, which would be confusing.
+*/
+
+
+int error_and_backspace_counter = error_counter + backspace_counter;
+
+
+// std::cout << "Error counter, backspace counter, error and \
+// backspace counter, and verse length: " << error_counter <<
+// backspace_counter << error_and_backspace_counter << verse_length;
+
+// Casting verse_length to a double ensures that error_rate itself
+// will be a double, not an int (which would likely result in
+// an incorrect calculation).
+double error_rate = (error_counter / static_cast<double>(
+    verse_length));
+double error_and_backspace_rate = (
+    error_and_backspace_counter / static_cast<double>(verse_length));
+
 if (completed_test == true) {
 std::cout << "You typed the " << verse_length << "-character verse \
 in " << test_seconds << " seconds, which reflects a typing speed \
-of " << wpm << " WPM.";}
+of " << wpm << " WPM. Your error rate was " << error_rate << "(not \
+including backspaces) and " << error_and_backspace_rate << " (\
+including backspaces).";}
 else 
 {
     std::cout << "Exiting test.";
     }
-
 
 Test_Result_Row trr;
 trr.unix_test_end_time = unix_test_end_time_as_long;
@@ -252,6 +349,8 @@ trr.verse = verse;
 trr.wpm = wpm;
 trr.test_seconds = test_seconds;
 trr.completed_test = completed_test;
+trr.error_rate = error_rate;
+trr.error_and_backspace_rate = error_and_backspace_rate;
 // Make sure to add a datetime entry here also (either Unix 
 // time or local time--or, ideally, both)
 
@@ -308,8 +407,12 @@ for (auto& row: test_results_reader) {
     trr.verse = row["Verse"].get<>();
     trr.wpm = row["WPM"].get<double>();
     trr.test_seconds = row["Test_Seconds"].get<double>();
+    trr.error_rate = row["Error_Rate"].get<double>();
+    trr.error_and_backspace_rate = row[
+        "Error_and_Backspace_Rate"].get<double>();
     trr.completed_test = 1; // Essentially a placeholder, though
     // it *is* accurate to say that these tests were completed.
+    
     trrv.push_back(trr);
 }
 
@@ -317,74 +420,104 @@ for (auto& row: test_results_reader) {
 // Creating a list of unread verses (in the form of vrv indices):
 // (Maybe pointers to verses could be used here instead?)
 
-std::vector<int> untyped_verse_indices;
+int untyped_verses;
+int typed_verses;
 
 for (int i=0; i <vrv.size(); ++i) {
     if (vrv[i].typed == 0) {
-    untyped_verse_indices.push_back(i);}
+    untyped_verses++;}
+    else
+    {typed_verses++;}
     };
 
-std::cout << untyped_verse_indices.size() << " verses have not yet \
-been typed.\n"; 
-
-// if (untyped_verse_indices.size() > 0) {
-// std::cout << "Here is the next verse that hasn't been typed:\n";
-// std::cout << vrv[untyped_verse_indices[0]].verse << "\n";
-// }
+std::cout << typed_verses << " verses have been typed so far, \
+leaving " << untyped_verses << " untyped.\n"; 
 
 std::string user_response = "";
-// The following iterator will allow us to move through the list of
-// verses that haven't yet been typed.
-int untyped_verse_iterator = 0;
 while (user_response != "e")
 {
-std::cout << "To type the next untyped verse, enter 'n'. \
-To exit, enter 'e'.";
+int verse_index_to_type = -1; // We'll check for this value when 
+// determining whether to run a typing test. 
+std::cout << "To type the next untyped verse, enter 'n'. To type \
+a specific verse ID, enter 'i.' To exit, enter 'e'.\n";
 
 std::cin >> user_response;
 
 if (user_response == "n")
 {
+// Checking for the next verse that has been typed:
+// (It's best to perform this check anew whenever the user enters
+// this response to account for verses that were specified manually
+// via the 'i' argument, then completed.)
 // You may need/want to update the following code so that it stores
-// a reference to the row rather than a copy thereof.
-Verse_Row next_untyped_verse_row = vrv[
-    untyped_verse_indices[untyped_verse_iterator]];
-int next_verse_id = next_untyped_verse_row.verse_id;
-std::string next_verse = next_untyped_verse_row.verse;
-int next_verse_length = next_untyped_verse_row.characters;
+// a reference or pointer to the row rather than a copy thereof.
 
-Test_Result_Row tres = run_test(next_verse_id, 
-next_verse, next_verse_length);
+for (int i=0; i <vrv.size(); ++i) {
+    if (vrv[i].typed == 0)
+{verse_index_to_type = i;
+break;}
+// To do: Add code that accounts for a case in which all verses
+// have been typed.
+}
+}
+
+else if (user_response == "i")
+{std::cout << "Enter the ID of the verse that you would like \
+to type. This ID can be found in the first column of \
+the CPDB_for_TTTB.csv file. To exit out of this option, type 'x.'\n";
+
+std::string id_response;
+std::cin >> id_response;
+if (id_response == "x")
+{std::cout << "Never mind, then!\n";}
+else // I'll need to update this section to address cases in which
+// the user enters a non-integer other than e.
+{int id_response_as_int = std::stoi(id_response);
+if ((id_response_as_int >= 1) && (id_response_as_int <= vrv.size()))
+// Subtracting 1 from id_response_as_int will get us the index 
+// position of that verse (as the first verse has an ID of 1 but
+// an index of 0).
+{verse_index_to_type = id_response_as_int -1;
+}
+}
+}
+
+else if (user_response == "e")
+{std::cout << "Exiting typing test.\n";
+    // break;
+    }
+
+if (verse_index_to_type != -1) // In this case, the user has
+// indicated that he/she wishes to type a verse--so we'll go ahead
+// and initiate a typing test for the verse in question.
+{
+// I could try replacing some of the following pass-by-value code
+// with references or pointers.
+    Verse_Row verse_to_type = vrv[verse_index_to_type];
+    // int verse_id_to_type = verse_to_type.verse_id;
+    // std::string verse_to_type = verse_to_type.verse;
+    // int leng_of_verse_to_type = verse_to_type.characters;
+
+Test_Result_Row tres = run_test(verse_to_type.verse_id, 
+verse_to_type.verse, verse_to_type.characters);
 
 // Adding results of the test to vrv so that it can later get added
 // to our .csv file:
-/* (To do: Create a standalone file that contains one row per 
-test result. */
 
 if (tres.completed_test == true) // We'll only want to make these 
 // updates and advance our untyped test iterator
 // if the user actually completed the test.
 {
-vrv[untyped_verse_indices[untyped_verse_iterator]].typed = 1;
-if (tres.wpm > vrv[untyped_verse_indices[
-    untyped_verse_iterator]].best_wpm) {
-vrv[untyped_verse_indices[
-    untyped_verse_iterator]].best_wpm = tres.wpm;}
-untyped_verse_iterator++; 
+vrv[verse_index_to_type].typed = 1;
+if (tres.wpm > vrv[verse_index_to_type].best_wpm) {
+vrv[verse_index_to_type].best_wpm = tres.wpm;}
+
 
 // Adding information about this test to our vector of test result
 // rows:
 trrv.push_back(tres);
 }
 }
-
-
-else if (user_response == "e")
-{std::cout << "Exiting typing test.\n";
-    // break;
-    }
-// Advancing our untyped verse iterator by 1 so that we can access
-// the next untyped verse within our vector of Bible verses:
 
 }
 
@@ -456,7 +589,9 @@ auto test_results_writer = make_csv_writer(
     "Verse_ID",
     "Verse",
     "WPM",
-    "Test_Seconds"};
+    "Test_Seconds",
+    "Error_Rate",
+    "Error_and_Backspace_Rate"};
 
     // Writing this header to the .csv file:
     test_results_writer << header_row;
@@ -468,7 +603,9 @@ auto test_results_writer = make_csv_writer(
     std::to_string(trrv[i].verse_id),
     trrv[i].verse,
     std::to_string(trrv[i].wpm),
-    std::to_string(trrv[i].test_seconds)
+    std::to_string(trrv[i].test_seconds),
+    std::to_string(trrv[i].error_rate),
+    std::to_string(trrv[i].error_and_backspace_rate),
     };
     test_results_writer << cols_as_strings;
     };

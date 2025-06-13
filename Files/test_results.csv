@@ -1,9 +1,8 @@
-Unix_Test_End_Time,Local_Test_End_Time,Verse_ID,Verse,WPM,Test_Seconds
-1749705367,"Thu Jun 12 01:16:07 2025
-",1,"In the beginning, God created heaven and earth.",148.986586,3.785576
-1749705385,"Thu Jun 12 01:16:25 2025
-",2,"But the earth was empty and unoccupied, and darknesses were over the face of the abyss; and so the Spirit of God was brought over the waters.",122.388174,13.824865
-1749705655,"Thu Jun 12 01:20:55 2025
-",3,"And God said, ""Let there be light."" And light became.",133.490008,4.764402
-1749706004,"Thu Jun 12 01:26:44 2025
-",4,"And God saw the light, that it was good; and so he divided the light from the darknesses.",116.964494,9.130976
+Unix_Test_End_Time,Local_Test_End_Time,Verse_ID,Verse,WPM,Test_Seconds,Error_Rate,Error_and_Backspace_Rate
+1749785574,2025-06-12T23:32:54-0400,1,"In the beginning, God created heaven and earth.",148.437528,3.799578,0.021277,0.042553
+1749785600,2025-06-12T23:33:20-0400,2,"But the earth was empty and unoccupied, and darknesses were over the face of the abyss; and so the Spirit of God was brought over the waters.",132.086517,12.809786,0.049645,0.099291
+1749785623,2025-06-12T23:33:43-0400,4,"And God saw the light, that it was good; and so he divided the light from the darknesses.",93.886930,11.375385,0.157303,0.269663
+1749785635,2025-06-12T23:33:55-0400,3,"And God said, ""Let there be light."" And light became.",128.635440,4.944205,0.018868,0.037736
+1749785656,2025-06-12T23:34:16-0400,5,"And he called the light, 'Day,' and the darknesses, 'Night.' And it became evening and morning, one day.",118.103134,10.567035,0.057692,0.115385
+1749785958,2025-06-12T23:39:18-0400,1,"In the beginning, God created heaven and earth.",176.334465,3.198467,0.000000,0.000000
+1749786054,2025-06-12T23:40:54-0400,1,"In the beginning, God created heaven and earth.",138.806655,4.063206,0.000000,0.000000
