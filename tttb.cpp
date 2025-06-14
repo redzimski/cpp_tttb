@@ -82,6 +82,20 @@ struct Test_Result_Row {
     // items also. 
 };
 
+// Defining a struct that can store word-level WPM information:
+// (This struct will be used to keep track of WPM results for 
+// individual words within tests.)
+
+struct Word_Result 
+{
+std::string word;
+long word_length; // an int would likely work fine here.
+double wpm;
+double test_seconds;
+double error_rate;
+double error_and_backspace_rate;
+};
+
 
 
 Test_Result_Row run_test(int verse_id, 
@@ -143,8 +157,8 @@ default: break;
 // errors the user made:
 // (One of these counters won't count backspaces as errors;
 // the other will.)
-int error_counter = 0;
-int backspace_counter = 0;
+long error_counter = 0;
+long backspace_counter = 0;
 
 // Starting our timing clock: 
 // (This code was based on p. 1010 of The C++ Programming Language,
