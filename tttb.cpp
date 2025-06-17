@@ -1,6 +1,19 @@
 /* C++ Version of Type Through the Bible
 (Still a very early work in progress!)
 
+To dos (incomplete list!!)
+
+1. Update word-based WPM code so that it also accounts for
+cases in which the very first letter begins a word
+2. Create a spreadsheet that can store word results, then
+add in code that reads that spreadsheet into a vector of
+Word_Result entries. Similarly, add in code that can add
+the contents of each word result map returned by each typing
+test to this vector. Finally, add in code that can then
+export the contents of this updated vector to your word 
+results spreadsheet.
+
+
 By Kenneth Burchfiel
 Released under the MIT License
 
@@ -26,6 +39,8 @@ Blessed Carlo Acutis, pray for us!
 #include <iostream>
 #include <ctime>
 #include <chrono>
+#include <map>
+#include <memory>
 #include "csv.hpp" 
 #include "cpp-terminal/terminal.hpp"
 #include "cpp-terminal/color.hpp"
@@ -88,22 +103,165 @@ struct Test_Result_Row {
 
 struct Word_Result 
 {
-std::string word;
-long word_length; // an int would likely work fine here.
-double wpm;
-double test_seconds;
-double error_rate;
-double error_and_backspace_rate;
+std::string word = "";
+long last_character_index = 0; 
+// The starting character could also be stored, but since this
+// value will be used as a map key, it will probably be redundant to
+// include it here also. 
+long word_length = 0; // an int would likely work fine here.
+double wpm = 0;
+double test_seconds = 0.0;
+long error_count = 0;
+long error_and_backspace_count = 0;
+double error_rate = 0.0;
+double error_and_backspace_rate = 0.0;
+};
+
+
+std::map<long, Word_Result> gen_word_result_map(
+    const std::string& verse) 
+/*This function will go through each character within the verse
+passed to it in order to identify all words within the verse;
+their starting and ending characters; and their lengths. This 
+information will then be stored within a map of Word_Result objects
+that the typing test code can access in order to calculate word-level
+WPM data.*/
+{
+// Initializing several variables here so that they can get 
+// utilized within the following loops:
+int first_character_index = -1;
+std::string newword = "";
+std::map<long, Word_Result> word_map;
+
+
+// Checking for the first character within the verse that starts
+// a word:
+for (int i = 0; i < verse.size(); i++)
+{if (isalnum(verse[i] != 0))
+first_character_index = i;
+newword = verse[i];
+break;
+}
+
+std::cout << "Current values of first_character_index \
+and newword: " << first_character_index << " " << newword << "\n";
+
+// Now that we know where the first character that starts a word 
+// is located,
+// we can continue to retrieve the other characters (starting
+// from the character following this first character).
+
+
+for (int i = first_character_index +1; i < verse.size(); i++)
+
+    {
+    /*If a character is alphanumeric, and the one prior to it
+    was not, we'll consider this to be the start of a new word.
+     Note that isalnum returns either a 0 or non-0 number
+     (see https://en.cppreference.com/w/cpp/string/byte/isalnum; 
+     in my case, it was 8), which is why I'm checking for 
+     0 and non-0 (rather than true or false) in my if statement. */
+        if ((isalnum(verse[i]) != 0) & (
+            isalnum(verse[i-1]) == 0))
+        {first_character_index = i;
+        newword = verse[i]; // I had previously tried to 
+        // create a Word_Result class here and assign verse[i] to 
+        // its .word attribute, but this failed to work correctly.
+        std::cout << "Starting character info: " 
+        << i << " " << verse[i] << "\n";}
+
+        
+        else if (((isalnum(verse[i]) == 0) 
+        && (isalnum(verse[i-1]) != 0)) || (
+        (isalnum(verse[i]) != 0) 
+        && (i == (verse.size() -1))))
+        /*In this case, either verse[i-1] marks the end of a word, 
+        or the final character of the verse is part of a word. 
+        For both of these situations, we should go ahead and add 
+        this word to a new Word_Result object, then add that object
+        to our word map (with the initial character as the key). */
+        {int last_character_index = i-1;
+        // Changing this value to i if the second condition 
+        // (e.g. the final word within the verse is a letter) is true:
+
+        if ((isalnum(verse[i]) != 0) 
+        && (i == (verse.size() -1)))
+         {
+            last_character_index = i;
+            // In this case, we'll need to add this final character
+            // to newword also.
+            newword+= verse[i];}
+        // Creating a new Word_Result object that can store
+        // various attributes about this word:
+        Word_Result wr;
+        wr.word = newword;
+        wr.word_length = newword.size();
+        wr.last_character_index = last_character_index;
+        word_map[first_character_index] = wr;
+        std::cout << "Ending character info: " << i << " " 
+        << verse[i-1] << "\n";}
+
+        else if (isalnum(verse[i]) != 0)
+        // In this case, we're in the middle of constructing a word,
+        // so we'll go ahead and add this alphanumeric character
+        // to that word.
+        {newword += verse[i];}
+
+    }
+            
+
+    // Printing out all initial characters, ending characters, 
+    // and words within the map:
+
+    for (auto const& [starting_character, word_result] : word_map) 
+    {std::cout << word_result.word << ": characters " << 
+    starting_character << " to " << word_result.last_character_index \
+    << " (" << word_result.word_length << " characters long)\n";}
+
+    return word_map;
 };
 
 
 
-Test_Result_Row run_test(int verse_id, 
-std::string verse, int verse_length) 
+std::tuple<Test_Result_Row, 
+std::map<long, Word_Result>> run_test(
+    int verse_id, 
+const std::string& verse, int verse_length) 
     {
 /* Some of the following code was based on the documentation at
 https://github.com/jupyter-xeus/cpp-terminal/blob/
 master/examples/keys.cpp .*/
+
+// Calling gen_word_result_map() to create a map that contains 
+// information about each word within the verse:
+// (This will prove useful when calculating word-level WPM data.)
+
+std::map<long, Word_Result> word_map = gen_word_result_map(verse);
+
+// Initializing several variables that will be used later in
+// this function:
+// Initializing counters that will keep track of the number of
+// errors the user made:
+// (One of these counters won't count backspaces as errors;
+// the other will.)
+long error_counter = 0;
+long backspace_counter = 0;
+
+//Initializing a string to which characters typed by the user
+// will be added: (This will allow us to print the entire portion
+// of the verse that the user has typed so far, rather than just
+// the most recent character.)
+std::string user_string = "";
+bool exit_test = false;
+bool completed_test = true;
+int last_character_index = -1;
+// For debugging:
+std::string last_character_index_as_string = "";
+
+int latest_first_character_index = -1;
+int first_character_index = -1;
+long word_length = 0;
+auto word_start_time = std::chrono::high_resolution_clock::now();
 
 std::cout << "Your next verse to type is:\n" << verse << "\nThis \
 verse is " << verse_length << " characters long.\n";
@@ -153,25 +311,12 @@ default: break;
     }
 };
 
-// Initializing counters that will keep track of the number of
-// errors the user made:
-// (One of these counters won't count backspaces as errors;
-// the other will.)
-long error_counter = 0;
-long backspace_counter = 0;
-
 // Starting our timing clock: 
 // (This code was based on p. 1010 of The C++ Programming Language,
 // 4th edition.)
 auto start_time = std::chrono::high_resolution_clock::now();
 
-//Initializing a string to which characters typed by the user
-// will be added: (This will allow us to print the entire portion
-// of the verse that the user has typed so far, rather than just
-// the most recent character.)
-std::string user_string = "";
-bool exit_test = false;
-bool completed_test = true; // The user may want to exit the 
+
 // test before completing it, so we should accommodate that choice.
 // However, in that case, this boolean will be set to 'false' so that
 // we don't mistake the exited test for a completed one.
@@ -181,6 +326,10 @@ switch(event.type())
 {case Term::Event::Type::Key:
 {
 Term::Key key(event);
+// Creating a timer following this keypress:
+// (This will be useful for timing how long it took the user
+// to type each individual word.)
+auto keypress_time = std::chrono::high_resolution_clock::now();
 
 std::string char_to_add = ""; // This default setting will 
 // be used in certain special keypress cases (including Backspace)
@@ -233,12 +382,69 @@ char_to_add = keyname;
 }
 
 user_string += char_to_add;
+std::string word_timing_note = ""; // for debugging
 /* Determining how to color the output: (If the output is correct 
 so far, it will be colored green; if there is a mistake, it will
 instead be colored red.*/
 auto print_color = Term::Color::Name::Default;
 if (user_string == verse.substr(0, user_string.length()))
-{print_color = Term::Color::Name::Green;}
+// Checking to see whether we should start or end our word timer:
+{// Checking to see whether we should begin timing a new word:
+// This new word's index position will be one greater than 
+// the current index position--but, conveniently, user_string.length()
+// allows us to access that position. And we'll want to 
+// start the timing right before the first letter of the word so that
+// the time that it takes that letter to get typed can also get
+// included in the overall timing for the word.
+// The code also checks to see whether the length of the user's entry
+// is greater than the most recent first_character_index so that
+// the user can't 'get out of' or restart the current word timer by 
+// going back to the start of the current word or a previous word.
+    if ((word_map.contains(user_string.length()))
+    && (long(user_string.length()) > latest_first_character_index))
+    // Note that string.length() needs to be cast to a long or int
+    // in order to get compared with latest_first_character_index.
+
+{// Updating latest_first_character_index:
+latest_first_character_index = user_string.length();
+    last_character_index = word_map[
+    latest_first_character_index].last_character_index;
+word_start_time = keypress_time;
+
+word_length = word_map[
+    latest_first_character_index].word_length;
+last_character_index_as_string = std::to_string(
+    last_character_index);
+word_timing_note = "the next letter will start a word. \
+its corresponing ending character index is: "+last_character_index_as_string;
+}
+if (user_string.length()-1 == last_character_index)
+{// In this case, we've made it to the end of the word whose
+// starting character we approached earlier. Thus, we can 
+// stop our word timer and create a new Word_Result object
+// with our output.
+auto word_end_time = keypress_time;
+auto word_seconds = std::chrono::duration<double>(
+    word_end_time - word_start_time).count();
+double word_wpm = (word_length / word_seconds) * 12;
+word_timing_note = "the end of the word has been \
+reached. Ending character: "+last_character_index_as_string + " \
+word length: "+std::to_string(word_length) + " word \
+duration: "+ std::to_string(word_seconds) + " WPM: " + std::to_string(
+word_wpm);
+// Note that, once we arrive at the next word's starting 
+// character, certain variables (like last_character_index)
+// will get replaced with new versions.
+
+// Storing these details within word_map: (We can use
+// latest_first_character_index as a key here.)
+word_map[latest_first_character_index].wpm = word_wpm;
+word_map[latest_first_character_index].test_seconds = word_seconds;
+}
+
+
+
+    print_color = Term::Color::Name::Green;}
 else // The user made a mistake, as signified by the fact that
 // this string doesn't match the initial section of the verse that
 // has the same length.
@@ -268,7 +474,8 @@ all other post-keypress output.*/
 Term::cout << Term::clear_screen() << Term::cursor_move(1,1) 
 << verse << std::endl << 
 Term::color_fg(print_color) << user_string 
-<< color_fg(Term::Color::Name::Default) << std::endl;
+<< color_fg(Term::Color::Name::Default) << word_timing_note 
+<< user_string.length() << latest_first_character_index << std::endl;
 break;
 }
 default: break;
@@ -368,7 +575,10 @@ trr.error_and_backspace_rate = error_and_backspace_rate;
 // Make sure to add a datetime entry here also (either Unix 
 // time or local time--or, ideally, both)
 
-    return trr;
+// Returning a tuple: (A pair could work here also, but a tuple
+// is more flexible.)
+
+    return {trr, word_map};
     }
 
 
@@ -418,6 +628,8 @@ for (auto& row: test_results_reader) {
     trr.unix_test_end_time = row["Unix_Test_End_Time"].get<long>();
     trr.local_test_end_time = row["Local_Test_End_Time"].get<>();
     trr.verse_id = row["Verse_ID"].get<int>();
+    // The following verse objects could get replaced 
+    // with unique pointers also.
     trr.verse = row["Verse"].get<>();
     trr.wpm = row["WPM"].get<double>();
     trr.test_seconds = row["Test_Seconds"].get<double>();
@@ -505,15 +717,33 @@ if (verse_index_to_type != -1) // In this case, the user has
 // indicated that he/she wishes to type a verse--so we'll go ahead
 // and initiate a typing test for the verse in question.
 {
-// I could try replacing some of the following pass-by-value code
-// with references or pointers.
-    Verse_Row verse_to_type = vrv[verse_index_to_type];
+
+    Verse_Row& verse_to_type = vrv[verse_index_to_type];
     // int verse_id_to_type = verse_to_type.verse_id;
     // std::string verse_to_type = verse_to_type.verse;
     // int leng_of_verse_to_type = verse_to_type.characters;
 
-Test_Result_Row tres = run_test(verse_to_type.verse_id, 
+std::tuple<Test_Result_Row,std::map<
+long, Word_Result>> tres_and_wm = run_test(
+    verse_to_type.verse_id, 
 verse_to_type.verse, verse_to_type.characters);
+
+Test_Result_Row tres = std::get<0>(tres_and_wm); 
+// tres is short for 'test result'
+std::map<long, Word_Result> wrm = std::get<1>(tres_and_wm); 
+// wrm is short for 'word result map'
+
+// Checking output of our word result map:
+// This code is based on that provided by POW at
+// https://stackoverflow.com/a/26282004/13097194 .
+
+for (auto [wrm_key, wrm_value]: wrm) {
+    std::cout << wrm_value.word << " "
+    << wrm_value.word_length << " " << wrm_value.wpm 
+    << wrm_value.test_seconds << "\n";}
+
+
+
 
 // Adding results of the test to vrv so that it can later get added
 // to our .csv file:

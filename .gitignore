@@ -17,3 +17,9 @@ typing_test_code.cpp
 testbed
 variant_testbed.cpp
 verse_to_word_testbed
+.vscode/launch.json
+.vscode/settings.json
+unique_ptr_testbed.cpp
+unique_ptr_testbed
+verse_to_word_testbed_v2.cpp
+*_old_*
