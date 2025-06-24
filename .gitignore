@@ -23,3 +23,5 @@ unique_ptr_testbed.cpp
 unique_ptr_testbed
 verse_to_word_testbed_v2.cpp
 *_old_*
+tttb_unique_ptr_example.cpp
+unique_ptr_testbed_v2.cpp

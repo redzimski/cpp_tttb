@@ -7,7 +7,8 @@ Released under the MIT License
 Link to project's GitHub page:
 https://github.com/kburchfiel/cpp_tttb
 
-This code also makes use of the following open-source libraries:
+This code also makes extensive use of the following 
+open-source libraries:
 
 1. Vincent La's CSV parser (https://github.com/vincentlaucsb/csv-parser)
 2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)
@@ -19,6 +20,46 @@ copy of this Bible (whose text does get updated periodically)
 around June 10, 2025.
 
 Blessed Carlo Acutis, pray for us!
+
+To dos (very incomplete list)!
+    1. Allow a new test to start immediately after the last one 
+    (e.g. 'marathon mode')
+
+    2. Implement an autosave option in which files get saved
+    after every 5 tests or so. (This will get trickier if you
+    implement parts 4 and 5, since you won't have a full copy
+    of word and test results to refer to.)
+
+    3. Think about ways to show and analyze stats (ideally using
+    C++, but perhaps via Python also)
+
+    4. Consider skipping the process of loading your existing
+    word_results data into memory. You won't really need it for
+    anything within the program, and by the time you type through 
+    the whole Bible, this file could be around 33 MB in size.
+
+    5. Similarly, consider skipping the process of loading test
+    result data into memory.
+
+    6. Prevent the program from crashing if the user doesn't enter
+    an integer when specifying a verse number.
+
+    7. Add code that accounts for a case in which all verses
+    have been typed.
+
+    8. Add in code that accounts for cases in which the most recent
+    verse that you typed was the last verse in the Bible.
+
+    9. In a separate script, compare the speed of (1) loading items
+    into a vector of values, then passing them by value; (2) loading
+    items into a vector of values, then passing them by reference 
+    (your current approach); (3) loading items into a vector of 
+    unique pointers to values, then passing them by reference or
+    by value; and (4) creating a unique pointer to a vector, then
+    loading items into it. (You could have a simulated dataset of
+    1 million rows with 1,000 columns each, then add each row's
+    columns together.)
+
 */
 
 
@@ -42,6 +83,10 @@ Blessed Carlo Acutis, pray for us!
 #include "cpp-terminal/tty.hpp"
 #include "cpp-terminal/version.hpp"
 using namespace csv;
+
+std::string all_verses_typed_message = "All verses have already \
+been typed at least once! try another choice (such as i for a \
+non-marathon-mode session or s for a marathon-mode session).\n";
 
 /* Defining a struct that can represent each row
 of CPDB_for_TTTB.csv (the .csv file containing all
@@ -93,6 +138,7 @@ struct Word_Result_Row
 std::string word = "";
 // Initializing certain variables as -1 or -1.0 will make it 
 // easier to identify cases in which they weren't updated.
+// I could try this approach with other structs as well.
 long last_character_index = -1; 
 // The starting character could also be stored, but since this
 // value will be used as a map key, it will probably be redundant to
@@ -103,6 +149,52 @@ double test_seconds = -1.0;
 double error_rate = -1.0;
 double error_and_backspace_rate = -1.0;
 };
+
+int select_verse_id(std::vector<Verse_Row>& vrv) {
+/* This function allows the player to select a certain ID. It also
+checks for errors in order to (hopefully!) prevent the game
+from crashing. 
+Note: I had originally set the value typed by the user to an 
+integer, then checked to see whether cin was valid; however,
+this created a strange (to me) bug in which the function would
+work fine the first time, but not during subsequent uses.
+I did include cin.clear() and cin.ignore() calls, but to no avail.
+Therefore, I decided to read in a string, then use a try/except
+block to handle it. This approach is working much better,
+thankfully!*/
+std::string id_response_as_str = "";
+while (true) {
+std::cout << "Enter the ID of the verse that you would like \
+to type. This ID can be found in the first column of \
+the CPDB_for_TTTB.csv file. To exit out of this option, type -1.\n";
+// Checking for a valid response:
+std::cin >> id_response_as_str;
+try
+{int id_response_as_int = std::stoi(id_response_as_str);
+
+if (id_response_as_int == -1)
+{std::cout << "Never mind, then!\n";
+return -1;}
+
+else if ((id_response_as_int >= 1) && (
+    id_response_as_int <= vrv.size()))
+// Subtracting 1 from id_response_as_int will get us the index 
+// position of that verse (as the index of each verse is one less 
+// than its ID).
+{return (id_response_as_int -1);
+}
+else
+{std::cout << "That is not a valid ID. Please try again.\n";
+//return -1;
+}
+}
+
+catch (...) {
+    std::cout << "Your input was invalid. Please try again.\n";
+//return -1;
+}
+}
+}
 
 
 std::map<long, Word_Result_Row> gen_word_result_map(
@@ -147,7 +239,8 @@ for (int i = first_character_index +1; i < verse.size(); i++)
      Note that isalnum returns either a 0 or non-0 number
      (see https://en.cppreference.com/w/cpp/string/byte/isalnum; 
      in my case, it was 8), which is why I'm checking for 
-     0 and non-0 (rather than true or false) in my if statement. */
+     0 and non-0 in my if statement. This code could likely 
+     be simplified, however.*/
         if ((isalnum(verse[i]) != 0) & (
             isalnum(verse[i-1]) == 0))
         {first_character_index = i;
@@ -208,15 +301,15 @@ for (int i = first_character_index +1; i < verse.size(); i++)
     // word_result.last_character_index
     // << " (" << word_result.word_length << " characters long)\n";}
 
-
-    return word_map;
+    // Moving word_map in order to avoid an unnecessary copy:
+    return std::move(word_map);
 };
 
 
 
-Test_Result_Row run_test(
-    int verse_id, const std::string& verse, int verse_length,
-std::vector<Word_Result_Row>& wrrv) 
+bool run_test(
+    Verse_Row& verse_row, std::vector<Test_Result_Row>& trrv, 
+std::vector<Word_Result_Row>& wrrv, bool marathon_mode) 
     {
 /* Some of the following code was based on the documentation at
 https://github.com/jupyter-xeus/cpp-terminal/blob/
@@ -226,7 +319,8 @@ master/examples/keys.cpp .*/
 // information about each word within the verse:
 // (This will prove useful when calculating word-level WPM data.)
 
-std::map<long, Word_Result_Row> word_map = gen_word_result_map(verse);
+std::map<long, Word_Result_Row> word_map = gen_word_result_map(
+    verse_row.verse);
 
 // Initializing several variables that will be used later in
 // this function:
@@ -255,10 +349,8 @@ int first_character_index = -1;
 long word_length = 0;
 auto word_start_time = std::chrono::high_resolution_clock::now();
 
-std::cout << "Your next verse to type is:\n" << verse << "\nThis \
-verse is " << verse_length << " characters long.\n";
-std::cout << "Press any key to begin the typing test." << "\n";
 
+// Initializing our terminal:
 Term::terminal.setOptions(Term::Option::NoClearScreen, 
 Term::Option::NoSignalKeys, Term::Option::Cursor, 
 Term::Option::Raw);
@@ -270,6 +362,15 @@ https://github.com/jupyter-xeus/cpp-terminal/blob/
 master/examples/events.cpp . */
 Term::Cursor cursor{Term::cursor_position()};
 
+
+if (marathon_mode == false) // The following prompt should be skipped
+// within marathon mode, thus allowing users to go directly 
+// into the typing test.
+{
+Term::cout << "Your next verse to type is:\n" << 
+verse_row.verse << "\nThis \
+verse is " << verse_row.characters << " characters long.\nPress \
+any key to begin the typing test." << std::endl;
 
 // The following while statement allows the user to begin the 
 // test immediately after pressing a key. This statement will also
@@ -285,6 +386,15 @@ switch(event.type())
     case Term::Event::Type::Key:
 {
 Term::Key key(event);
+start_test = true;
+break;
+}
+default: break;
+    }
+};
+}
+
+//Clearing the screen before the start of the test:
 // cursor_move(1,1) moves the cursor to the top left of the terminal.
 // Note that, for this to work, we need to pass
 // this function call to Term::cout (it doesn't do 
@@ -294,14 +404,12 @@ Term::Key key(event);
 // and the cursor.cpp source code at 
 // https://github.com/jupyter-xeus/cpp-terminal/blob/master/cpp-terminal/cursor.cpp
 // helped me recognize all this.)
+// I've also found that ending Term::cout lines with "\n" may 
+// not work; instead, it may be necessary to use std::endl .
+
 Term::cout << Term::cursor_move(1,1) << 
-Term::clear_screen() << verse << std::endl;
-start_test = true;
-break;
-}
-default: break;
-    }
-};
+Term::clear_screen() << verse_row.verse << std::endl;
+
 
 // Starting our timing clock: 
 // (This code was based on p. 1010 of The C++ Programming Language,
@@ -339,7 +447,7 @@ last_character_index_as_string = std::to_string(
 // so we should accommodate that choice.
 // However, in that case, this boolean will be set to 'false' so that
 // we don't mistake the exited test for a completed one.
-while ((user_string != verse) & (exit_test == false)){
+while ((user_string != verse_row.verse) & (exit_test == false)){
 Term::Event event = Term::read_event();
 switch(event.type())
 {case Term::Event::Type::Key:
@@ -407,7 +515,7 @@ user_string += char_to_add;
 so far, it will be colored green; if there is a mistake, it will
 instead be colored red.*/
 auto print_color = Term::Color::Name::Default;
-if (user_string == verse.substr(0, user_string.length()))
+if (user_string == verse_row.verse.substr(0, user_string.length()))
 // Checking to see whether we should start or end our word timer:
 {// Checking to see whether we should begin timing a new word:
 // This new word's index position will be one greater than 
@@ -509,7 +617,7 @@ rather than earlier in the loop--as Term::clear_screen() will erase
 all other post-keypress output.*/
 
 Term::cout << Term::clear_screen() << Term::cursor_move(1,1) 
-<< verse << std::endl << 
+<< verse_row.verse << std::endl << 
 Term::color_fg(print_color) << user_string 
 << color_fg(Term::Color::Name::Default) <<std::endl; 
 break;
@@ -555,7 +663,8 @@ long unix_test_end_time_as_long = long(unix_test_end_time);
     // than this length in order for it to fit the entire
     // timestamp.
 
-double wpm = (verse_length / test_seconds) * 12; /* To calculate WPM,
+double wpm = (
+    verse_row.characters / test_seconds) * 12; /* To calculate WPM,
 we begin with characters per second, then multiply by 60 (to go
 from seconds to minutes) and divide by 5 (to go from characters
 to words using the latter's standard definition).*/
@@ -583,30 +692,31 @@ int error_and_backspace_counter = error_counter + backspace_counter;
 // will be a double, not an int (which would likely result in
 // an incorrect calculation).
 double error_rate = (error_counter / static_cast<double>(
-    verse_length));
+    verse_row.characters));
 double error_and_backspace_rate = (
-    error_and_backspace_counter / static_cast<double>(verse_length));
+    error_and_backspace_counter / static_cast<double>(
+        verse_row.characters));
 
 if (completed_test == true) {
-std::cout << "You typed the " << verse_length << "-character verse \
+std::cout << "You typed the " << verse_row.characters 
+<< "-character verse \
 in " << test_seconds << " seconds, which reflects a typing speed \
 of " << wpm << " WPM. Your error rate was " << error_rate << " (not \
 including backspaces) and " << error_and_backspace_rate << " (\
-including backspaces).";
+including backspaces).\n";
 
 
-// Adding word-level results to their respective vector:
-
-// This code is based on that provided by POW at
-// https://stackoverflow.com/a/26282004/13097194 .
+/* The code below for looping through a dictionary is based on that
+provided by POW at https://stackoverflow.com/a/26282004/13097194 . */
 
 for (auto [word_map_key, word_map_value]: word_map) {
     // std::cout << word_map_value.word << " "
     // << word_map_value.word_length << " " << word_map_value.wpm 
     // << word_map_value.test_seconds << "\n";
+    
 
-    // Adding a new entry to our vector of word result
-    // rows:
+    /* Adding a new word result row to wrrv: (one row will be added 
+    for each word. */
     Word_Result_Row wrr;
     wrr.word = word_map_value.word;
     wrr.wpm = word_map_value.wpm;
@@ -616,25 +726,34 @@ for (auto [word_map_key, word_map_value]: word_map) {
     wrrv.push_back(wrr);    
     }
 
+    /* Adding a new test result row to trrv: (only one row will
+    be added for the entire test.) */
+    Test_Result_Row trr;
+    trr.unix_test_end_time = unix_test_end_time_as_long;
+    trr.local_test_end_time = local_time_string;
+    trr.verse_id = verse_row.verse_id;
+    trr.verse = verse_row.verse;
+    trr.wpm = wpm;
+    trr.test_seconds = test_seconds;
+    trr.completed_test = completed_test;
+    trr.error_rate = error_rate;
+    trr.error_and_backspace_rate = error_and_backspace_rate;
+    trrv.push_back(trr);
+
+    // Updating the 'typed' value (and, if needed,
+    // the 'best_wpm' value) within our verse_row object:
+    verse_row.typed = 1;
+    if (wpm > verse_row.best_wpm) {
+    verse_row.best_wpm = wpm;}
 
 }
 else 
 {
-    std::cout << "Exiting test.";
+    std::cout << "Exiting test.\n";
     }
 
-Test_Result_Row trr;
-trr.unix_test_end_time = unix_test_end_time_as_long;
-trr.local_test_end_time = local_time_string;
-trr.verse_id = verse_id;
-trr.verse = verse;
-trr.wpm = wpm;
-trr.test_seconds = test_seconds;
-trr.completed_test = completed_test;
-trr.error_rate = error_rate;
-trr.error_and_backspace_rate = error_and_backspace_rate;
+return completed_test;
 
-return trr;
 }
 
 
@@ -645,6 +764,18 @@ int main() {
 
 // Creating a vector that can store all of the Bible verses found
 // within CPDB_for_TTTB.csv:
+
+
+// Note: I had considered reading data into a vector of 
+// unique pointers to Verse_Row objects; however, based on 
+// some online research, I don't think this approach would 
+// necessarily speed up my program--and, in fact, all of the
+// deferencing operations could end up slowing it down. Therefore,
+// I instead decided to have vrv store full copies of this data;
+// however, my typing test function accesses values stored in this
+// vector by reference, which should reduce the amount of 
+// copying involved.
+// 
 
 std::vector<Verse_Row> vrv; // vrv is short for 'Verse Row vector.'
 
@@ -674,6 +805,12 @@ for (auto& row: reader) {
 
 std::cout << "Imported Bible .csv file successfully.\n";
 std::cout << "Number of verses imported: " << vrv.size() << "\n";
+
+// Importing test result data:
+// I was also thinking about having trrv store unique pointers
+// to test result rows, but I ultimately decided to instead
+// have my typing test function access this data by reference,
+// as I felt that that would lead to better performance overall.
 
 std::vector<Test_Result_Row> trrv; // trrv is short for 
 // 'Test result row vector.'
@@ -705,9 +842,10 @@ std::cout << "Number of test results imported: "
 << trrv.size() << "\n";
 
 
+// Importing word result data:
+
 std::vector<Word_Result_Row> wrrv; // wrrv is short for 
 // 'Word result row vector.'
-
 
 std::string word_results_file_path = "../Files/word_results.csv";
 CSVReader word_results_reader(word_results_file_path);
@@ -727,69 +865,117 @@ std::cout << "Number of word results imported: "
 << wrrv.size() << "\n";
 
 
-// Creating a list of unread verses (in the form of vrv indices):
-// (Maybe pointers to verses could be used here instead?)
+// Counting the number of unread verses so far:
+
+int earliest_untyped_verse_index = 40000; // This number will be 
+// updated within the following for loop.
 
 int untyped_verses = 0;
 int typed_verses = 0;
+bool all_verses_typed = true; // This value will also be used 
+// within our main gameplay loop to determine whether or not 
+// the user has finished typing all verses at least once.
 
 for (int i=0; i <vrv.size(); ++i) {
     if (vrv[i].typed == 0) {
+        if (i < earliest_untyped_verse_index)
+        // In this case, our earliest untyped verse index value
+        // will be updated to match this smaller value. (We 
+        // deliberately initialized that variable to a number
+        // higher than our verse count in order to ensure that this
+        // update process would work correctly.
+    {
+        earliest_untyped_verse_index = i;}
+    all_verses_typed = false;
     untyped_verses++;}
     else
     {typed_verses++;}
-    };
+    }
 
-std::cout << typed_verses << " verses have been typed so far, \
-leaving " << untyped_verses << " untyped.\n"; 
 
+if (untyped_verses != 0)
+{std::cout << typed_verses << " verses have been typed so far, \
+leaving " << untyped_verses << " untyped. The earliest untyped \
+verse has the ID " << earliest_untyped_verse_index+1 << ".\n";}
+
+else {
+    std::cout << "All verses have been typed! Congratulations on \
+this momentous accomplishment!\n";}
+
+int previously_typed_verse_index = -1; // I chose to initialize
+// this integer as -1 so that, when the user selects
+// sequential marathon mode at the very start of the program,
+// TTTB will select the verse with index 0 (e.g. the first verse
+// in the Bible) as their first verse to type.
+
+// Determining whether to run a typing test, and if so, for what 
+// verse:
 std::string user_response = "";
+bool marathon_mode = false;
+
+// Main gameplay loop:
 while (user_response != "e")
 {
+
 int verse_index_to_type = -1; // We'll check for this value when 
 // determining whether to run a typing test. 
-std::cout << "To type the next untyped verse, enter 'n'. To type \
-a specific verse ID, enter 'i.' To exit, enter 'e'.\n";
+
+// Checking whether either marathon mode is active (and, if so,
+// skipping the regular prompt with which users are presented):
+if (marathon_mode == false)
+{
+std::cout << "Enter 'n' to type the next untyped verse; 'c' to type \
+the next verse; and 'i' to type a specific verse ID.\n \
+To enter 'untyped marathon mode' \
+(in which you will continually be presented with the next \
+untyped verse until you exit out of a race), press 'm.'\n \
+To enter 'sequential marathon mode', in which you will continually \
+be asked to type (1) the verse following the one you just typed or \
+(2) (when starting this mode) a verse of your choice, enter 's.'\nTo \
+exit the program and save your progress, enter 'e'.\n";
 
 std::cin >> user_response;
+}
+if ((user_response == "n") || user_response == "m")
 
-if (user_response == "n")
+if (all_verses_typed == true)
+{std::cout << all_verses_typed_message; // Since verse_index_to_type 
+// is stil at -1, and marathon mode hasn't been set to true, the user
+// will now be returned to the main gameplay prompt. 
+}
+else
 {
-// Checking for the next verse that has been typed:
+// Checking for the next verse that hasn't been typed:
 // (It's best to perform this check anew whenever the user enters
 // this response to account for verses that were specified manually
 // via the 'i' argument, then completed.)
-// You may need/want to update the following code so that it stores
-// a reference or pointer to the row rather than a copy thereof.
 
-for (int i=0; i <vrv.size(); ++i) {
-    if (vrv[i].typed == 0)
-{verse_index_to_type = i;
+// Note: this loop makes use of a previously defined variable 
+// that will get updated whenever this loop runs. (That way,
+// we won't waste time checking earlier verses that we've already
+// checked.)
+
+
+for (; earliest_untyped_verse_index < vrv.size(); 
+++earliest_untyped_verse_index) {
+    if (vrv[earliest_untyped_verse_index].typed == 0)
+{
+    verse_index_to_type = earliest_untyped_verse_index;
+    if (user_response == "m")
+    {marathon_mode = true;}
 break;}
-// To do: Add code that accounts for a case in which all verses
-// have been typed.
 }
+
+if (verse_index_to_type == -1) // In this case, the user has typed
+// all verses at least once.
+{all_verses_typed = true;
+std::cout << all_verses_typed_message;
+}
+
 }
 
 else if (user_response == "i")
-{std::cout << "Enter the ID of the verse that you would like \
-to type. This ID can be found in the first column of \
-the CPDB_for_TTTB.csv file. To exit out of this option, type 'x.'\n";
-
-std::string id_response;
-std::cin >> id_response;
-if (id_response == "x")
-{std::cout << "Never mind, then!\n";}
-else // I'll need to update this section to address cases in which
-// the user enters a non-integer other than e.
-{int id_response_as_int = std::stoi(id_response);
-if ((id_response_as_int >= 1) && (id_response_as_int <= vrv.size()))
-// Subtracting 1 from id_response_as_int will get us the index 
-// position of that verse (as the first verse has an ID of 1 but
-// an index of 0).
-{verse_index_to_type = id_response_as_int -1;
-}
-}
+{verse_index_to_type = select_verse_id(vrv);
 }
 
 else if (user_response == "e")
@@ -797,36 +983,62 @@ else if (user_response == "e")
     // break;
     }
 
+else if ((user_response == "s") || (user_response == "c"))
+{
+    if (previously_typed_verse_index == (
+        vrv.size() - 1)) // In this case, the previously-typed verse 
+    // was the last verse in the Bible; therefore, this option
+    // won't be valid.
+    {std::cout << "You just typed the last verse in the Bible. \
+therefore, you'll need to select another option, such as 'i', \
+which will allow you to type a specific verse.\n";
+marathon_mode = false; // Exiting marathon mode in order to prevent
+// an infinite dialog loop from occuring
+}
+    else
+{
+    verse_index_to_type = previously_typed_verse_index + 1;
+    if (user_response == "s") {
+        if (marathon_mode == false) // In this case, the player 
+        // has just entered this mode; therefore, we will allow 
+        // him/her to select a starting verse.
+        {std::cout << "Please select a verse ID from which to start \
+this mode.";
+        verse_index_to_type = select_verse_id(vrv);
+    if (verse_index_to_type != -1) // If the user didn't select
+    // a valid verse, we won't want to set marathon mode to true.
+    {
+    marathon_mode = true;}    
+        }
+    
+    }
+}
+}
+
 if (verse_index_to_type != -1) // In this case, the user has
 // indicated that he/she wishes to type a verse--so we'll go ahead
 // and initiate a typing test for the verse in question.
 {
-
     Verse_Row& verse_to_type = vrv[verse_index_to_type];
 
-Test_Result_Row tres = run_test(
-    verse_to_type.verse_id, 
-verse_to_type.verse, verse_to_type.characters,
-wrrv);
-
-// Adding results of the test to vrv so that it can later get added
-// to our .csv file:
-
-if (tres.completed_test == true) // We'll only want to make these 
-// updates and advance our untyped test iterator
-// if the user actually completed the test.
-{
-vrv[verse_index_to_type].typed = 1;
-if (tres.wpm > vrv[verse_index_to_type].best_wpm) {
-vrv[verse_index_to_type].best_wpm = tres.wpm;}
-
-
-// Adding information about this test to our vector of test result
-// rows:
-trrv.push_back(tres);
-}
+// Running the typing test: 
+// Note: All arguments will be passed as references in order to
+// (hopefully) reduce runtime and/or allow certain items,
+// namely trrv and wrrv, to get updated directly within the function.
+bool completed_test = run_test(
+    verse_to_type, trrv, wrrv, marathon_mode);
+// The following code will exit a user out of either marathon 
+// mode if he/she did not complete the most recent test.
+if (completed_test == false) {
+    marathon_mode = false;
 }
 
+if (completed_test == true)
+// Updating previously_typed_verse_index so that it will be 
+// ready for use within options 's' and 'c':
+{previously_typed_verse_index = verse_index_to_type;}   
+
+}
 }
 
 
