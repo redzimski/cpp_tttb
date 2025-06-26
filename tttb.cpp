@@ -22,35 +22,24 @@ around June 10, 2025.
 Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
-    1. Allow a new test to start immediately after the last one 
-    (e.g. 'marathon mode')
 
-    2. Implement an autosave option in which files get saved
+    1. Implement an autosave option in which files get saved
     after every 5 tests or so. (This will get trickier if you
     implement parts 4 and 5, since you won't have a full copy
     of word and test results to refer to.)
 
-    3. Think about ways to show and analyze stats (ideally using
+    2. Think about ways to show and analyze stats (ideally using
     C++, but perhaps via Python also)
 
-    4. Consider skipping the process of loading your existing
+    3. Consider skipping the process of loading your existing
     word_results data into memory. You won't really need it for
     anything within the program, and by the time you type through 
     the whole Bible, this file could be around 33 MB in size.
 
-    5. Similarly, consider skipping the process of loading test
+    4. Similarly, consider skipping the process of loading test
     result data into memory.
 
-    6. Prevent the program from crashing if the user doesn't enter
-    an integer when specifying a verse number.
-
-    7. Add code that accounts for a case in which all verses
-    have been typed.
-
-    8. Add in code that accounts for cases in which the most recent
-    verse that you typed was the last verse in the Bible.
-
-    9. In a separate script, compare the speed of (1) loading items
+    5. In a separate script, compare the speed of (1) loading items
     into a vector of values, then passing them by value; (2) loading
     items into a vector of values, then passing them by reference 
     (your current approach); (3) loading items into a vector of 
@@ -59,6 +48,11 @@ To dos (very incomplete list)!
     loading items into it. (You could have a simulated dataset of
     1 million rows with 1,000 columns each, then add each row's
     columns together.)
+
+    6. Get Alt + Enter to work when no space is present. (You could
+    just have this command reset the display in this situation.)
+
+    7. Update Readme with gameplay + compilation information.
 
 */
 
@@ -103,7 +97,8 @@ struct Verse_Row {
     std::string verse_code;
     std::string verse;
     int characters;
-    int typed;
+    int tests; // Will store how many times the user has typed 
+    // a given verse.
     double best_wpm;
 };
 
@@ -115,18 +110,32 @@ struct Verse_Row {
 // the attributes stored here will actually end up within
 // that file.)
 struct Test_Result_Row {
+    long unix_test_start_time;
+    std::string local_test_start_time;
     long unix_test_end_time;
     std::string local_test_end_time;
     int verse_id;
-    std::string verse;
+    std::string verse_code; 
+    std::string verse; // In rare occasions, corrections might be
+    // made to a given verse. (For instance, I replaced double
+    // spaces in the original CDBP text with single spaces.) 
+    // Therefore, it will be helpful to keep a record of the verse
+    // that the user actually typed, even though this will make
+    // the test results file considerably larger.
+    int characters; // Similarly, this length could potentially
+    // change between tests (e.g. if extra spaces get removed from
+    // a verse). Although this value can be determined from the 
+    // verse itself, including it here won't take up too much
+    // extra space.
     double wpm;
     double test_seconds;
-    bool completed_test;
     double error_rate;
     double error_and_backspace_rate;
     // This struct will be expanded to include accuracy data,
     // the time the test was started and finished, and possibly other
     // items also. 
+    int marathon_mode; // Stores whether or not marathon mode was
+    // active during a test.
 };
 
 // Defining a struct that can store word-level WPM information:
@@ -338,6 +347,7 @@ long word_backspace_counter = 0;
 // of the verse that the user has typed so far, rather than just
 // the most recent character.)
 std::string user_string = "";
+
 bool exit_test = false;
 bool completed_test = true;
 int last_character_index = -1;
@@ -367,8 +377,8 @@ if (marathon_mode == false) // The following prompt should be skipped
 // within marathon mode, thus allowing users to go directly 
 // into the typing test.
 {
-Term::cout << "Your next verse to type is:\n" << 
-verse_row.verse << "\nThis \
+Term::cout << "Your next verse to type is " << 
+verse_row.verse_code << ":\n" << verse_row.verse << "\nThis \
 verse is " << verse_row.characters << " characters long.\nPress \
 any key to begin the typing test." << std::endl;
 
@@ -394,7 +404,7 @@ default: break;
 };
 }
 
-//Clearing the screen before the start of the test:
+// Clearing the screen before the start of the test:
 // cursor_move(1,1) moves the cursor to the top left of the terminal.
 // Note that, for this to work, we need to pass
 // this function call to Term::cout (it doesn't do 
@@ -634,9 +644,10 @@ auto test_seconds = std::chrono::duration<double>(
     end_time - start_time).count();
 /* The following time variable initialization code was based in part 
 on https://en.cppreference.com/w/cpp/chrono/system_clock/now.html . */
-std::time_t unix_test_end_time = std::chrono::
-system_clock::to_time_t(end_time);
-long unix_test_end_time_as_long = long(unix_test_end_time);
+
+std::time_t unix_test_start_time = std::chrono::
+system_clock::to_time_t(start_time);
+long unix_test_start_time_as_long = long(unix_test_start_time);
 // Creating a string version of this timestamp that shows
 // the user's local time:
 // The following formatting code was based on the examples
@@ -646,10 +657,10 @@ long unix_test_end_time_as_long = long(unix_test_end_time);
     // this isn't available within older C++ implementations.
     // (See https://en.cppreference.com/w/cpp/chrono/
     // system_clock/formatter) for more information on that option.)
-    char strftime_container [25];
-    std::strftime(strftime_container,
-    25, "%FT%T%z", std::localtime(&unix_test_end_time));
-    std::string local_time_string = strftime_container;
+    char start_strftime_container [25];
+    std::strftime(start_strftime_container,
+    25, "%FT%T%z", std::localtime(&unix_test_start_time));
+    std::string local_start_time_string = start_strftime_container;
     // %F represents YYYY-MM-DD; %T represents 
     // HH-MM-SS; and %z represents the local UTC offset
     // (e.g. -0400 for Eastern Daylight Time in the US).
@@ -662,6 +673,16 @@ long unix_test_end_time_as_long = long(unix_test_end_time);
     // I needed to set strftime_container as one greater
     // than this length in order for it to fit the entire
     // timestamp.
+
+// Performing similar steps on the end-of-test timestamp:
+
+std::time_t unix_test_end_time = std::chrono::
+system_clock::to_time_t(end_time);
+long unix_test_end_time_as_long = long(unix_test_end_time);
+    char end_strftime_container [25];
+    std::strftime(end_strftime_container,
+    25, "%FT%T%z", std::localtime(&unix_test_end_time));
+    std::string local_end_time_string = end_strftime_container;
 
 double wpm = (
     verse_row.characters / test_seconds) * 12; /* To calculate WPM,
@@ -680,9 +701,7 @@ error_count)/verse_length) wouldn't be ideal, as we could then
 end up with a negative number, which would be confusing.
 */
 
-
 int error_and_backspace_counter = error_counter + backspace_counter;
-
 
 // std::cout << "Error counter, backspace counter, error and \
 // backspace counter, and verse length: " << error_counter <<
@@ -713,7 +732,6 @@ for (auto [word_map_key, word_map_value]: word_map) {
     // std::cout << word_map_value.word << " "
     // << word_map_value.word_length << " " << word_map_value.wpm 
     // << word_map_value.test_seconds << "\n";
-    
 
     /* Adding a new word result row to wrrv: (one row will be added 
     for each word. */
@@ -729,20 +747,24 @@ for (auto [word_map_key, word_map_value]: word_map) {
     /* Adding a new test result row to trrv: (only one row will
     be added for the entire test.) */
     Test_Result_Row trr;
+    trr.unix_test_start_time = unix_test_start_time_as_long;
+    trr.local_test_start_time = local_start_time_string;
     trr.unix_test_end_time = unix_test_end_time_as_long;
-    trr.local_test_end_time = local_time_string;
+    trr.local_test_end_time = local_end_time_string;
     trr.verse_id = verse_row.verse_id;
+    trr.verse_code = verse_row.verse_code;
     trr.verse = verse_row.verse;
+    trr.characters = verse_row.characters;
     trr.wpm = wpm;
     trr.test_seconds = test_seconds;
-    trr.completed_test = completed_test;
     trr.error_rate = error_rate;
     trr.error_and_backspace_rate = error_and_backspace_rate;
+    trr.marathon_mode = marathon_mode;
     trrv.push_back(trr);
 
-    // Updating the 'typed' value (and, if needed,
-    // the 'best_wpm' value) within our verse_row object:
-    verse_row.typed = 1;
+    // Incrementing the 'tests' value (and, if needed,
+    // updating the 'best_wpm' value) within our verse_row object:
+    verse_row.tests += 1;
     if (wpm > verse_row.best_wpm) {
     verse_row.best_wpm = wpm;}
 
@@ -777,6 +799,9 @@ int main() {
 // copying involved.
 // 
 
+auto vrv_import_start_time = std::chrono::
+high_resolution_clock::now();
+
 std::vector<Verse_Row> vrv; // vrv is short for 'Verse Row vector.'
 
 /* Reading data:
@@ -798,19 +823,29 @@ for (auto& row: reader) {
     vr.verse_code = row["Verse_Code"].get<std::string>();
     vr.verse = row["Verse"].get<std::string>();
     vr.characters = row["Characters"].get<int>();
-    vr.typed = row["Typed"].get<int>();
+    vr.tests = row["Tests"].get<int>();
     vr.best_wpm = row["Best_WPM"].get<double>();
     vrv.push_back(vr);
 }
 
-std::cout << "Imported Bible .csv file successfully.\n";
-std::cout << "Number of verses imported: " << vrv.size() << "\n";
+auto vrv_import_end_time = std::chrono::
+high_resolution_clock::now();
+
+auto vrv_import_seconds = std::chrono::duration<double>(
+    vrv_import_end_time - vrv_import_start_time).count();
+
+
+std::cout << "Imported " << vrv.size() << " Bible verses in " <<
+vrv_import_seconds << " seconds.\n";
 
 // Importing test result data:
 // I was also thinking about having trrv store unique pointers
 // to test result rows, but I ultimately decided to instead
 // have my typing test function access this data by reference,
 // as I felt that that would lead to better performance overall.
+
+auto trrv_import_start_time = std::chrono::
+high_resolution_clock::now();
 
 std::vector<Test_Result_Row> trrv; // trrv is short for 
 // 'Test result row vector.'
@@ -820,29 +855,40 @@ std::string test_results_file_path = "../Files/test_results.csv";
 CSVReader test_results_reader(test_results_file_path);
 for (auto& row: test_results_reader) {
     Test_Result_Row trr;
+    trr.unix_test_start_time = row["Unix_Test_Start_Time"].get<long>();
+    trr.local_test_start_time = row["Local_Test_Start_Time"].get<>();
     trr.unix_test_end_time = row["Unix_Test_End_Time"].get<long>();
     trr.local_test_end_time = row["Local_Test_End_Time"].get<>();
     trr.verse_id = row["Verse_ID"].get<int>();
     // The following verse objects could get replaced 
     // with unique pointers also.
+    trr.verse_code = row["Verse_Code"].get<>();
     trr.verse = row["Verse"].get<>();
+    trr.characters = row["Characters"].get<int>();
     trr.wpm = row["WPM"].get<double>();
     trr.test_seconds = row["Test_Seconds"].get<double>();
     trr.error_rate = row["Error_Rate"].get<double>();
     trr.error_and_backspace_rate = row[
         "Error_and_Backspace_Rate"].get<double>();
-    trr.completed_test = 1; // Essentially a placeholder, though
-    // it *is* accurate to say that these tests were completed.
+    trr.marathon_mode = row["Marathon_Mode"].get<int>();
     
     trrv.push_back(trr);
 }
 
-std::cout << "Imported test result data (if any) successfully.\n";
-std::cout << "Number of test results imported: " 
-<< trrv.size() << "\n";
+auto trrv_import_end_time = std::chrono::
+high_resolution_clock::now();
+
+auto trrv_import_seconds = std::chrono::duration<double>(
+    trrv_import_end_time - trrv_import_start_time).count();
+
+std::cout << "Imported " << trrv.size() << " test result(s) in " <<
+trrv_import_seconds << " seconds.\n";
 
 
 // Importing word result data:
+
+auto wrrv_import_start_time = std::chrono::
+high_resolution_clock::now();
 
 std::vector<Word_Result_Row> wrrv; // wrrv is short for 
 // 'Word result row vector.'
@@ -859,10 +905,15 @@ for (auto& row: word_results_reader) {
     wrrv.push_back(wrr);
 }
 
+auto wrrv_import_end_time = std::chrono::
+high_resolution_clock::now();
 
-std::cout << "Imported word result data (if any) successfully.\n";
-std::cout << "Number of word results imported: " 
-<< wrrv.size() << "\n";
+auto wrrv_import_seconds = std::chrono::duration<double>(
+    wrrv_import_end_time - wrrv_import_start_time).count();
+
+
+std::cout << "Imported " << wrrv.size() << " word results in " <<
+wrrv_import_seconds << " seconds.\n";
 
 
 // Counting the number of unread verses so far:
@@ -877,7 +928,7 @@ bool all_verses_typed = true; // This value will also be used
 // the user has finished typing all verses at least once.
 
 for (int i=0; i <vrv.size(); ++i) {
-    if (vrv[i].typed == 0) {
+    if (vrv[i].tests == 0) {
         if (i < earliest_untyped_verse_index)
         // In this case, our earliest untyped verse index value
         // will be updated to match this smaller value. (We 
@@ -925,10 +976,10 @@ int verse_index_to_type = -1; // We'll check for this value when
 if (marathon_mode == false)
 {
 std::cout << "Enter 'n' to type the next untyped verse; 'c' to type \
-the next verse; and 'i' to type a specific verse ID.\n \
+the next verse; and 'i' to type a specific verse ID.\n\
 To enter 'untyped marathon mode' \
 (in which you will continually be presented with the next \
-untyped verse until you exit out of a race), press 'm.'\n \
+untyped verse until you exit out of a race), press 'm.'\n\
 To enter 'sequential marathon mode', in which you will continually \
 be asked to type (1) the verse following the one you just typed or \
 (2) (when starting this mode) a verse of your choice, enter 's.'\nTo \
@@ -958,7 +1009,7 @@ else
 
 for (; earliest_untyped_verse_index < vrv.size(); 
 ++earliest_untyped_verse_index) {
-    if (vrv[earliest_untyped_verse_index].typed == 0)
+    if (vrv[earliest_untyped_verse_index].tests == 0)
 {
     verse_index_to_type = earliest_untyped_verse_index;
     if (user_response == "m")
@@ -979,7 +1030,7 @@ else if (user_response == "i")
 }
 
 else if (user_response == "e")
-{std::cout << "Exiting typing test.\n";
+{std::cout << "Exiting game and saving progress.\n";
     // break;
     }
 
@@ -1052,6 +1103,9 @@ and
 https://vincela.com/csv/classcsv_1_1DelimWriter.html .*/
 
 
+auto vrv_export_start_time = std::chrono::
+high_resolution_clock::now();
+
 std::ofstream verse_output_filename {verses_file_path};
 auto verses_writer = make_csv_writer(verse_output_filename);
 
@@ -1068,7 +1122,7 @@ auto verses_writer = make_csv_writer(verse_output_filename);
     "Verse_Code",
     "Verse",
     "Characters",
-    "Typed",
+    "Tests",
     "Best_WPM"};
 
     // Writing this header to the .csv file:
@@ -1091,48 +1145,77 @@ auto verses_writer = make_csv_writer(verse_output_filename);
     vrv[i].verse_code,
     vrv[i].verse,
     std::to_string(vrv[i].characters),
-    std::to_string(vrv[i].typed),
+    std::to_string(vrv[i].tests),
     std::to_string(vrv[i].best_wpm)
     };
     verses_writer << cols_as_strings;
     };
 
-std::cout << "Updated Bible .csv file.\n";
+auto vrv_export_end_time = std::chrono::
+high_resolution_clock::now();
+auto vrv_export_seconds = std::chrono::duration<double>(
+    vrv_export_end_time - vrv_export_start_time).count();
+std::cout << "Exported " << vrv.size() << " Bible verses in " <<
+vrv_export_seconds << " seconds.\n";
+
+// Exporting test results:
+
+auto trrv_export_start_time = std::chrono::
+high_resolution_clock::now();
 
 std::ofstream test_results_output_filename {test_results_file_path};
 auto test_results_writer = make_csv_writer(
     test_results_output_filename);
 
     header_row = {
+    "Unix_Test_Start_Time",
+    "Local_Test_Start_Time",    
     "Unix_Test_End_Time",
     "Local_Test_End_Time",
     "Verse_ID",
+    "Verse_Code",
     "Verse",
+    "Characters",
     "WPM",
     "Test_Seconds",
     "Error_Rate",
-    "Error_and_Backspace_Rate"};
+    "Error_and_Backspace_Rate",
+    "Marathon_Mode"};
 
     // Writing this header to the .csv file:
     test_results_writer << header_row;
     
     for (int i=0; i < trrv.size(); ++i) {
     std::vector<std::string> cols_as_strings = {
+    std::to_string(trrv[i].unix_test_start_time),
+    trrv[i].local_test_start_time,
     std::to_string(trrv[i].unix_test_end_time),
     trrv[i].local_test_end_time,
     std::to_string(trrv[i].verse_id),
+    trrv[i].verse_code,
     trrv[i].verse,
+    std::to_string(trrv[i].characters),
     std::to_string(trrv[i].wpm),
     std::to_string(trrv[i].test_seconds),
     std::to_string(trrv[i].error_rate),
     std::to_string(trrv[i].error_and_backspace_rate),
+    std::to_string(trrv[i].marathon_mode),
     };
     test_results_writer << cols_as_strings;
     };
 
-std::cout << "Updated .csv file containing test results.\n";
+auto trrv_export_end_time = std::chrono::
+high_resolution_clock::now();
+auto trrv_export_seconds = std::chrono::duration<double>(
+    trrv_export_end_time - trrv_export_start_time).count();
+std::cout << "Exported " << trrv.size() << " test result(s) in " <<
+trrv_export_seconds << " seconds.\n";
 
 
+// Exporting word results:
+
+auto wrrv_export_start_time = std::chrono::
+high_resolution_clock::now();
 
 std::ofstream word_results_output_filename {word_results_file_path};
 auto word_results_writer = make_csv_writer(
@@ -1157,8 +1240,12 @@ auto word_results_writer = make_csv_writer(
     word_results_writer << cols_as_strings;
     };
 
-std::cout << "Updated .csv file containing word results.\n";
-
+auto wrrv_export_end_time = std::chrono::
+high_resolution_clock::now();
+auto wrrv_export_seconds = std::chrono::duration<double>(
+    wrrv_export_end_time - wrrv_export_start_time).count();
+std::cout << "Exported " << wrrv.size() << " word results in " <<
+wrrv_export_seconds << " seconds.\n";
 
 std::cout << "Quitting program.\n";
 

@@ -1,1 +1,1 @@
-Unix_Test_End_Time,Local_Test_End_Time,Verse_ID,Verse,WPM,Test_Seconds,Error_Rate,Error_and_Backspace_Rate
+Unix_Test_Start_Time,Local_Test_Start_Time,Unix_Test_End_Time,Local_Test_End_Time,Verse_ID,Verse_Code,Verse,Characters,WPM,Test_Seconds,Error_Rate,Error_and_Backspace_Rate,Marathon_Mode
