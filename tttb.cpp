@@ -19,6 +19,19 @@ found at https://sacredbible.org/catholic/ I last updated my local
 copy of this Bible (whose text does get updated periodically)
 around June 10, 2025.
 
+Some relevant notes:
+1. I found that, when I tried to mix std::cin and Term::cin,
+certain user prompts would work fine the first time around but
+then fail again. I think that this may be because the cpp-terminal
+library changes default cin settings; for reference,
+see https://github.com/jupyter-xeus/cpp-terminal/issues/320 .
+To avoid this issue, I simply replaced all std::cin and std::cout 
+calls with Term::cin and Term::cout, respectively.
+
+2. It also appears that the cpp-terminal library requires
+std::endl at the end of Term::cout statements rather than '\n'; 
+otherwise, output may not appear.
+
 Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
@@ -54,6 +67,10 @@ To dos (very incomplete list)!
 
     7. Update Readme with gameplay + compilation information.
 
+    8. Add a multiplayer option!
+
+    9. Find a way to allow for spaces in tags.
+
 */
 
 
@@ -63,6 +80,9 @@ To dos (very incomplete list)!
 #include <chrono>
 #include <map>
 #include <memory>
+#include <algorithm>
+#include <vector>
+
 #include "csv.hpp" 
 #include "cpp-terminal/terminal.hpp"
 #include "cpp-terminal/color.hpp"
@@ -80,7 +100,7 @@ using namespace csv;
 
 std::string all_verses_typed_message = "All verses have already \
 been typed at least once! try another choice (such as i for a \
-non-marathon-mode session or s for a marathon-mode session).\n";
+non-marathon-mode session or s for a marathon-mode session).";
 
 /* Defining a struct that can represent each row
 of CPDB_for_TTTB.csv (the .csv file containing all
@@ -136,6 +156,17 @@ struct Test_Result_Row {
     // items also. 
     int marathon_mode; // Stores whether or not marathon mode was
     // active during a test.
+    // Entries for player info and other tags that the player
+    // can use to store custom information (e.g. about
+    // what keyboard is being used, how much sleep he/she got
+    // the night before, etc.)
+    // These will be initialized as emtpy strings because, as
+    // optional fields, there may not be any data entered for 
+    // them during the typing test.
+    std::string player = "";
+    std::string tag_1 = "";
+    std::string tag_2 = "";
+    std::string tag_3 = "";
 };
 
 // Defining a struct that can store word-level WPM information:
@@ -159,6 +190,16 @@ double error_rate = -1.0;
 double error_and_backspace_rate = -1.0;
 };
 
+// Defining a set of configuration settings that can be updated
+// by the user during the game:
+
+struct Game_Config {
+    std::string player = "";
+    std::string tag_1 = "";
+    std::string tag_2 = "";
+    std::string tag_3 = "";
+};
+
 int select_verse_id(std::vector<Verse_Row>& vrv) {
 /* This function allows the player to select a certain ID. It also
 checks for errors in order to (hopefully!) prevent the game
@@ -173,16 +214,17 @@ block to handle it. This approach is working much better,
 thankfully!*/
 std::string id_response_as_str = "";
 while (true) {
-std::cout << "Enter the ID of the verse that you would like \
+Term::cout << "Enter the ID of the verse that you would like \
 to type. This ID can be found in the first column of \
-the CPDB_for_TTTB.csv file. To exit out of this option, type -1.\n";
+the CPDB_for_TTTB.csv file. To exit out of this option, \
+type -1." << std::endl;
 // Checking for a valid response:
-std::cin >> id_response_as_str;
+Term::cin >> id_response_as_str;
 try
 {int id_response_as_int = std::stoi(id_response_as_str);
 
 if (id_response_as_int == -1)
-{std::cout << "Never mind, then!\n";
+{Term::cout << "Never mind, then!" << std::endl;
 return -1;}
 
 else if ((id_response_as_int >= 1) && (
@@ -193,13 +235,13 @@ else if ((id_response_as_int >= 1) && (
 {return (id_response_as_int -1);
 }
 else
-{std::cout << "That is not a valid ID. Please try again.\n";
+{Term::cout << "That is not a valid ID. Please try again." << std::endl;
 //return -1;
 }
 }
 
 catch (...) {
-    std::cout << "Your input was invalid. Please try again.\n";
+    Term::cout << "Your input was invalid. Please try again." << std::endl;
 //return -1;
 }
 }
@@ -231,8 +273,8 @@ newword = verse[i];
 break;
 }
 
-// std::cout << "Current values of first_character_index \
-// and newword: " << first_character_index << " " << newword << "\n";
+// Term::cout << "Current values of first_character_index \
+// and newword: " << first_character_index << " " << newword << std::endl;
 
 // Now that we know where the first character that starts a word 
 // is located,
@@ -250,14 +292,14 @@ for (int i = first_character_index +1; i < verse.size(); i++)
      in my case, it was 8), which is why I'm checking for 
      0 and non-0 in my if statement. This code could likely 
      be simplified, however.*/
-        if ((isalnum(verse[i]) != 0) & (
+        if ((isalnum(verse[i]) != 0) && (
             isalnum(verse[i-1]) == 0))
         {first_character_index = i;
         newword = verse[i]; // I had previously tried to 
         // create a Word_Result_Row class here and assign verse[i] to 
         // its .word attribute, but this failed to work correctly.
-        // std::cout << "Starting character info: " 
-        // << i << " " << verse[i] << "\n";
+        // Term::cout << "Starting character info: " 
+        // << i << " " << verse[i] << std::endl;
         }
 
         
@@ -288,8 +330,8 @@ for (int i = first_character_index +1; i < verse.size(); i++)
         wr.word_length = newword.size();
         wr.last_character_index = last_character_index;
         word_map[first_character_index] = wr;
-        // std::cout << "Ending character info: " << i << " " 
-        // << verse[i-1] << "\n";
+        // Term::cout << "Ending character info: " << i << " " 
+        // << verse[i-1] << std::endl;
         }
 
         else if (isalnum(verse[i]) != 0)
@@ -305,10 +347,10 @@ for (int i = first_character_index +1; i < verse.size(); i++)
     // and words within the map for debugging purposes:
 
     // for (auto const& [starting_character, word_result] : word_map) 
-    // {std::cout << word_result.word << ": characters " << 
+    // {Term::cout << word_result.word << ": characters " << 
     // starting_character << " to " << 
     // word_result.last_character_index
-    // << " (" << word_result.word_length << " characters long)\n";}
+    // << " (" << word_result.word_length << " characters long)" << std::endl;}
 
     // Moving word_map in order to avoid an unnecessary copy:
     return std::move(word_map);
@@ -318,7 +360,13 @@ for (int i = first_character_index +1; i < verse.size(); i++)
 
 bool run_test(
     Verse_Row& verse_row, std::vector<Test_Result_Row>& trrv, 
-std::vector<Word_Result_Row>& wrrv, bool marathon_mode) 
+std::vector<Word_Result_Row>& wrrv, const bool& marathon_mode,
+const std::string& player, const std::string& tag_1, 
+const std::string& tag_2, const std::string& tag_3)
+/* This function allows the player to complete a single typing test.
+It then updates the verse_row, trrv, and wrrv vectors with the results
+of that test.
+*/ 
     {
 /* Some of the following code was based on the documentation at
 https://github.com/jupyter-xeus/cpp-terminal/blob/
@@ -360,16 +408,6 @@ long word_length = 0;
 auto word_start_time = std::chrono::high_resolution_clock::now();
 
 
-// Initializing our terminal:
-Term::terminal.setOptions(Term::Option::NoClearScreen, 
-Term::Option::NoSignalKeys, Term::Option::Cursor, 
-Term::Option::Raw);
-if(!Term::is_stdin_a_tty()) { throw Term::Exception(
-    "The terminal is not attached to a TTY and therefore \
-can't catch user input. Exiting..."); }
-/* The following code was based in part on 
-https://github.com/jupyter-xeus/cpp-terminal/blob/
-master/examples/events.cpp . */
 Term::Cursor cursor{Term::cursor_position()};
 
 
@@ -408,7 +446,7 @@ default: break;
 // cursor_move(1,1) moves the cursor to the top left of the terminal.
 // Note that, for this to work, we need to pass
 // this function call to Term::cout (it doesn't do 
-// anything by itself). Note that passing it to std::cout won't work.
+// anything by itself). Note that passing it to Term::cout won't work.
 // The kilo.cpp example (available at
 // https://github.com/jupyter-xeus/cpp-terminal/blob/master/examples/kilo.cpp
 // and the cursor.cpp source code at 
@@ -457,7 +495,7 @@ last_character_index_as_string = std::to_string(
 // so we should accommodate that choice.
 // However, in that case, this boolean will be set to 'false' so that
 // we don't mistake the exited test for a completed one.
-while ((user_string != verse_row.verse) & (exit_test == false)){
+while ((user_string != verse_row.verse) && (exit_test == false)){
 Term::Event event = Term::read_event();
 switch(event.type())
 {case Term::Event::Type::Key:
@@ -703,7 +741,7 @@ end up with a negative number, which would be confusing.
 
 int error_and_backspace_counter = error_counter + backspace_counter;
 
-// std::cout << "Error counter, backspace counter, error and \
+// Term::cout << "Error counter, backspace counter, error and \
 // backspace counter, and verse length: " << error_counter <<
 // backspace_counter << error_and_backspace_counter << verse_length;
 
@@ -717,21 +755,21 @@ double error_and_backspace_rate = (
         verse_row.characters));
 
 if (completed_test == true) {
-std::cout << "You typed the " << verse_row.characters 
+Term::cout << "You typed the " << verse_row.characters 
 << "-character verse \
 in " << test_seconds << " seconds, which reflects a typing speed \
 of " << wpm << " WPM. Your error rate was " << error_rate << " (not \
 including backspaces) and " << error_and_backspace_rate << " (\
-including backspaces).\n";
+including backspaces)." << std::endl;
 
 
 /* The code below for looping through a dictionary is based on that
 provided by POW at https://stackoverflow.com/a/26282004/13097194 . */
 
 for (auto [word_map_key, word_map_value]: word_map) {
-    // std::cout << word_map_value.word << " "
+    // Term::cout << word_map_value.word << " "
     // << word_map_value.word_length << " " << word_map_value.wpm 
-    // << word_map_value.test_seconds << "\n";
+    // << word_map_value.test_seconds << std::endl;
 
     /* Adding a new word result row to wrrv: (one row will be added 
     for each word. */
@@ -760,6 +798,10 @@ for (auto [word_map_key, word_map_value]: word_map) {
     trr.error_rate = error_rate;
     trr.error_and_backspace_rate = error_and_backspace_rate;
     trr.marathon_mode = marathon_mode;
+    trr.player = player;
+    trr.tag_1 = tag_1;
+    trr.tag_2 = tag_2;
+    trr.tag_3 = tag_3;
     trrv.push_back(trr);
 
     // Incrementing the 'tests' value (and, if needed,
@@ -771,15 +813,128 @@ for (auto [word_map_key, word_map_value]: word_map) {
 }
 else 
 {
-    std::cout << "Exiting test.\n";
+    Term::cout << "Exiting test." << std::endl;
     }
 
 return completed_test;
 
 }
 
+void update_game_config(Game_Config& gcf) 
+/* This function allows the player to update game configuration 
+settings during the game. The output won't overwrite the defaults
+stored within game_config.csv, but it will allow different
+tags and player names to get stored within the test_results.csv
+file. */
+{
+std::string config_response = "";
+while (config_response != "e")
+{
+std::string new_config_setting = "";
+Term::cout << "Please enter your desired game configuration update. \
+This update should start with a 'p' for a Player update; a '1' \
+for a Tag_1 update; a '2' for a Tag_2 update; or a '3' for a \
+Tag_3 update. This character should be followed by an underscore, \
+then your desired new value for this configuration entry--which \
+cannot contain any whitespace. (If you wish \
+to make a given setting blank, enter only the initial code.) \
+Once you have finished making your desired updates, enter 'e' to \
+return to the main gameplay menu.\nFor reference, here are your \
+current configuration settings:\nPlayer: '" << 
+gcf.player << "'\nTag_1: '" << gcf.tag_1 << "'\nTag_2: '" << 
+gcf.tag_2 << "'\nTag_3: '" << gcf.tag_3 << "'" << std::endl;
+
+Term::cin >> config_response;
+// Checking the value of config_response for debugging purposes:
+Term::cout << "Value of config_response:\n" << config_response << std::endl;
+
+// Checking to see whether the user wishes to exit:
+if (config_response == "e")
+{Term::cout << "Finished updating configuration options." << std::endl;
+continue;}
+
+// Using the first character within config_response to determine
+// which configuration setting should be updated with this new value:
+char config_setting_code = config_response[0];
+
+// Making sure that a valid code was entered:
+std::vector<char> valid_codes {'p', '1', '2', '3'};
+
+if (std::find(valid_codes.begin(), valid_codes.end(), 
+config_setting_code) == valid_codes.end())
+// This code was based on an example found at
+// https://en.cppreference.com/w/cpp/algorithm/find.html .
+// The 'true' condition here means that the code was *not* found
+// within valid_codes.
+{Term::cout << "The configuration setting code should be 'p', '1', \
+'2', or '3'. Please try again or enter 'e' to exit." << std::endl;
+continue;}
+
+// The following map, which stores each code's corresponding full
+// setting name, will help make an upcoming dialog
+// easier to interpret.
+std::map<char, std::string> code_to_config_map {
+{'p', "Player"},
+{'1',"Tag_1"}, {'2',"Tag_2"}, {'3',"Tag_3"}};
+
+std::string new_config_value = "";
+
+// Checking whether a non-blank entry for the code was provided:
+if (config_response.size() >= 3)
+
+{// Extracting the new value for the configuration setting:
+// (this value starts at position 2 within the user's response and 
+// continues on until the end of the string.)
+new_config_value = config_response.substr(
+    2, config_response.size() -2);}
+
+// If this if statement returns fals, no value was provided, so
+// the default value for new_config_value will be retained.
+
+Term::cout << "Your requested new " << code_to_config_map[
+    config_setting_code] << " setting is '" << new_config_value << 
+"'. To confirm this change, enter 'y.' To try again, \
+enter 'n.'" << std::endl;
+
+std::string config_change_confirmation = "";
+
+Term::cin >> config_change_confirmation; 
+
+if (config_change_confirmation != "y") // If anything other
+// than 'y' is entered by the user, the dialog will 
+// restart, and no changes will be made.
+{Term::cout << "This change has been canceled." << std::endl;
+continue;}
+
+
+if (config_setting_code == 'p')
+{gcf.player = new_config_value;}
+
+else if (config_setting_code == '1')
+{gcf.tag_1 = new_config_value;}
+
+else if (config_setting_code == '2')
+{gcf.tag_2 = new_config_value;}
+
+else if (config_setting_code == '3')
+{gcf.tag_3 = new_config_value;}
+Term::cout << "Updated configuration setting." << std::endl;
+}
+}
+
 
 int main() {
+
+// Initializing our terminal:
+Term::terminal.setOptions(Term::Option::NoClearScreen, 
+Term::Option::NoSignalKeys, Term::Option::NoCursor, 
+Term::Option::Raw);
+if(!Term::is_stdin_a_tty()) { throw Term::Exception(
+    "The terminal is not attached to a TTY and therefore \
+can't catch user input. Exiting..."); }
+/* The following code was based in part on 
+https://github.com/jupyter-xeus/cpp-terminal/blob/
+master/examples/events.cpp . */
 
 //Reading relevant files into our program:
 
@@ -835,8 +990,8 @@ auto vrv_import_seconds = std::chrono::duration<double>(
     vrv_import_end_time - vrv_import_start_time).count();
 
 
-std::cout << "Imported " << vrv.size() << " Bible verses in " <<
-vrv_import_seconds << " seconds.\n";
+Term::cout << "Imported " << vrv.size() << " Bible verses in " <<
+vrv_import_seconds << " seconds." << std::endl;
 
 // Importing test result data:
 // I was also thinking about having trrv store unique pointers
@@ -871,6 +1026,10 @@ for (auto& row: test_results_reader) {
     trr.error_and_backspace_rate = row[
         "Error_and_Backspace_Rate"].get<double>();
     trr.marathon_mode = row["Marathon_Mode"].get<int>();
+    trr.player = row["Player"].get<>();
+    trr.tag_1 = row["Tag_1"].get<>();
+    trr.tag_2 = row["Tag_2"].get<>();
+    trr.tag_3 = row["Tag_3"].get<>();
     
     trrv.push_back(trr);
 }
@@ -881,8 +1040,8 @@ high_resolution_clock::now();
 auto trrv_import_seconds = std::chrono::duration<double>(
     trrv_import_end_time - trrv_import_start_time).count();
 
-std::cout << "Imported " << trrv.size() << " test result(s) in " <<
-trrv_import_seconds << " seconds.\n";
+Term::cout << "Imported " << trrv.size() << " test result(s) in " <<
+trrv_import_seconds << " seconds." << std::endl;
 
 
 // Importing word result data:
@@ -912,8 +1071,8 @@ auto wrrv_import_seconds = std::chrono::duration<double>(
     wrrv_import_end_time - wrrv_import_start_time).count();
 
 
-std::cout << "Imported " << wrrv.size() << " word results in " <<
-wrrv_import_seconds << " seconds.\n";
+Term::cout << "Imported " << wrrv.size() << " word results in " <<
+wrrv_import_seconds << " seconds." << std::endl;
 
 
 // Counting the number of unread verses so far:
@@ -945,13 +1104,13 @@ for (int i=0; i <vrv.size(); ++i) {
 
 
 if (untyped_verses != 0)
-{std::cout << typed_verses << " verses have been typed so far, \
+{Term::cout << typed_verses << " verses have been typed so far, \
 leaving " << untyped_verses << " untyped. The earliest untyped \
-verse has the ID " << earliest_untyped_verse_index+1 << ".\n";}
+verse has the ID " << earliest_untyped_verse_index+1 << "." << std::endl;}
 
 else {
-    std::cout << "All verses have been typed! Congratulations on \
-this momentous accomplishment!\n";}
+    Term::cout << "All verses have been typed! Congratulations on \
+this momentous accomplishment!" << std::endl;}
 
 int previously_typed_verse_index = -1; // I chose to initialize
 // this integer as -1 so that, when the user selects
@@ -959,8 +1118,34 @@ int previously_typed_verse_index = -1; // I chose to initialize
 // TTTB will select the verse with index 0 (e.g. the first verse
 // in the Bible) as their first verse to type.
 
-// Determining whether to run a typing test, and if so, for what 
-// verse:
+// Reading in default configuration settings specified by the user
+// within config.csv: 
+// (These settings can be updated within the game as needed.)
+
+Game_Config gcf;
+std::string game_config_file_path = "../Files/game_config.csv";
+CSVReader game_config_reader(game_config_file_path);
+/* There should only be one row (not including the header row)
+within game_config.csv. If additional rows were somehow
+added, the final value for each row will be stored within gcf.
+I imagine that there's a way to update the following code to 
+read only the first data row of the .csv file, but this approach
+(the same one used for earlier .csv import processes) will
+work for now. */
+
+for (auto& row: game_config_reader) {
+    gcf.player = row["Player"].get<>();
+    gcf.tag_1 = row["Tag_1"].get<>();
+    gcf.tag_2 = row["Tag_2"].get<>();
+    gcf.tag_3 = row["Tag_3"].get<>();
+}
+
+Term::cout << "Initial configuration settings: Player: '" << 
+gcf.player << "'\nTag_1: '" << gcf.tag_1 << "'\nTag_2: '" << 
+gcf.tag_2 << "'\nTag_3: '" << gcf.tag_3 << "'\nYou can update these \
+within the game as needed." << std::endl;
+
+
 std::string user_response = "";
 bool marathon_mode = false;
 
@@ -975,7 +1160,7 @@ int verse_index_to_type = -1; // We'll check for this value when
 // skipping the regular prompt with which users are presented):
 if (marathon_mode == false)
 {
-std::cout << "Enter 'n' to type the next untyped verse; 'c' to type \
+Term::cout << "Enter 'n' to type the next untyped verse; 'c' to type \
 the next verse; and 'i' to type a specific verse ID.\n\
 To enter 'untyped marathon mode' \
 (in which you will continually be presented with the next \
@@ -983,14 +1168,20 @@ untyped verse until you exit out of a race), press 'm.'\n\
 To enter 'sequential marathon mode', in which you will continually \
 be asked to type (1) the verse following the one you just typed or \
 (2) (when starting this mode) a verse of your choice, enter 's.'\nTo \
-exit the program and save your progress, enter 'e'.\n";
+update game configuration settings, enter 'u'. Finally, to \
+exit the program and save your progress, enter 'e'." << std::endl;
 
-std::cin >> user_response;
+Term::cin >> user_response;
 }
-if ((user_response == "n") || user_response == "m")
+
+if (user_response == "u") // This option will allow the user
+// to update game configuration settings for the current session.
+{update_game_config(gcf);}
+
+else if ((user_response == "n") || user_response == "m")
 
 if (all_verses_typed == true)
-{std::cout << all_verses_typed_message; // Since verse_index_to_type 
+{Term::cout << all_verses_typed_message << std::endl; // Since verse_index_to_type 
 // is stil at -1, and marathon mode hasn't been set to true, the user
 // will now be returned to the main gameplay prompt. 
 }
@@ -1020,7 +1211,7 @@ break;}
 if (verse_index_to_type == -1) // In this case, the user has typed
 // all verses at least once.
 {all_verses_typed = true;
-std::cout << all_verses_typed_message;
+Term::cout << all_verses_typed_message << std::endl;
 }
 
 }
@@ -1030,7 +1221,7 @@ else if (user_response == "i")
 }
 
 else if (user_response == "e")
-{std::cout << "Exiting game and saving progress.\n";
+{Term::cout << "Exiting game and saving progress." << std::endl;
     // break;
     }
 
@@ -1040,9 +1231,9 @@ else if ((user_response == "s") || (user_response == "c"))
         vrv.size() - 1)) // In this case, the previously-typed verse 
     // was the last verse in the Bible; therefore, this option
     // won't be valid.
-    {std::cout << "You just typed the last verse in the Bible. \
+    {Term::cout << "You just typed the last verse in the Bible. \
 therefore, you'll need to select another option, such as 'i', \
-which will allow you to type a specific verse.\n";
+which will allow you to type a specific verse." << std::endl;
 marathon_mode = false; // Exiting marathon mode in order to prevent
 // an infinite dialog loop from occuring
 }
@@ -1053,8 +1244,8 @@ marathon_mode = false; // Exiting marathon mode in order to prevent
         if (marathon_mode == false) // In this case, the player 
         // has just entered this mode; therefore, we will allow 
         // him/her to select a starting verse.
-        {std::cout << "Please select a verse ID from which to start \
-this mode.";
+        {Term::cout << "Please select a verse ID from which to start \
+this mode." << std::endl;
         verse_index_to_type = select_verse_id(vrv);
     if (verse_index_to_type != -1) // If the user didn't select
     // a valid verse, we won't want to set marathon mode to true.
@@ -1070,14 +1261,14 @@ if (verse_index_to_type != -1) // In this case, the user has
 // indicated that he/she wishes to type a verse--so we'll go ahead
 // and initiate a typing test for the verse in question.
 {
-    Verse_Row& verse_to_type = vrv[verse_index_to_type];
-
 // Running the typing test: 
 // Note: All arguments will be passed as references in order to
 // (hopefully) reduce runtime and/or allow certain items,
-// namely trrv and wrrv, to get updated directly within the function.
+// including trrv and wrrv, to get updated directly within 
+// the function.
 bool completed_test = run_test(
-    verse_to_type, trrv, wrrv, marathon_mode);
+    vrv[verse_index_to_type], trrv, wrrv, marathon_mode, 
+    gcf.player, gcf.tag_1, gcf.tag_2, gcf.tag_3);
 // The following code will exit a user out of either marathon 
 // mode if he/she did not complete the most recent test.
 if (completed_test == false) {
@@ -1155,8 +1346,8 @@ auto vrv_export_end_time = std::chrono::
 high_resolution_clock::now();
 auto vrv_export_seconds = std::chrono::duration<double>(
     vrv_export_end_time - vrv_export_start_time).count();
-std::cout << "Exported " << vrv.size() << " Bible verses in " <<
-vrv_export_seconds << " seconds.\n";
+Term::cout << "Exported " << vrv.size() << " Bible verses in " <<
+vrv_export_seconds << " seconds." << std::endl;
 
 // Exporting test results:
 
@@ -1180,7 +1371,11 @@ auto test_results_writer = make_csv_writer(
     "Test_Seconds",
     "Error_Rate",
     "Error_and_Backspace_Rate",
-    "Marathon_Mode"};
+    "Marathon_Mode",
+    "Player",
+    "Tag_1",
+    "Tag_2",
+    "Tag_3"};
 
     // Writing this header to the .csv file:
     test_results_writer << header_row;
@@ -1200,6 +1395,10 @@ auto test_results_writer = make_csv_writer(
     std::to_string(trrv[i].error_rate),
     std::to_string(trrv[i].error_and_backspace_rate),
     std::to_string(trrv[i].marathon_mode),
+    trrv[i].player,
+    trrv[i].tag_1,
+    trrv[i].tag_2,
+    trrv[i].tag_3
     };
     test_results_writer << cols_as_strings;
     };
@@ -1208,9 +1407,8 @@ auto trrv_export_end_time = std::chrono::
 high_resolution_clock::now();
 auto trrv_export_seconds = std::chrono::duration<double>(
     trrv_export_end_time - trrv_export_start_time).count();
-std::cout << "Exported " << trrv.size() << " test result(s) in " <<
-trrv_export_seconds << " seconds.\n";
-
+Term::cout << "Exported " << trrv.size() << " test result(s) in " <<
+trrv_export_seconds << " seconds." << std::endl;
 
 // Exporting word results:
 
@@ -1244,9 +1442,8 @@ auto wrrv_export_end_time = std::chrono::
 high_resolution_clock::now();
 auto wrrv_export_seconds = std::chrono::duration<double>(
     wrrv_export_end_time - wrrv_export_start_time).count();
-std::cout << "Exported " << wrrv.size() << " word results in " <<
-wrrv_export_seconds << " seconds.\n";
+Term::cout << "Exported " << wrrv.size() << " word results in " <<
+wrrv_export_seconds << " seconds." << std::endl;
 
-std::cout << "Quitting program.\n";
-
+Term::cout << "Quitting program." << std::endl;
 }
