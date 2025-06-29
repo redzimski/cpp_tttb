@@ -1527,9 +1527,9 @@ std::string multiplayer_filename_string;
 
 Term::cin >> multiplayer_filename_string;
 
-std::string multiplayer_results_path = ("../Files/" 
+std::string multiplayer_results_path = ("../Files/Multiplayer/" 
 + multiplayer_start_time_as_string + "_" + 
-multiplayer_filename_string);
+multiplayer_filename_string + ".csv");
 
 Term::cout << "The results from this session will be available \
 at " << multiplayer_results_path << "." << std::endl;
@@ -1556,7 +1556,7 @@ int test_counter = 1; // This counter will store the total number
 for (int current_round = 1; 
 current_round < (multiplayer_rounds + 1); current_round++)
 {
-    for (int player_index = 0; player_index <= player_names.size(); 
+    for (int player_index = 0; player_index < player_names.size(); 
     player_index++)
     {
         for (int current_test_within_round = 1; 
@@ -1564,9 +1564,9 @@ current_round < (multiplayer_rounds + 1); current_round++)
             tests_per_round + 1); current_test_within_round++)
 
             {mgcf.player = player_names[player_index];
-            mgcf.tag_1 = current_round;
-            mgcf.tag_2 = current_test_within_round;
-            mgcf.tag_3 = test_counter;
+            mgcf.tag_1 = std::to_string(current_round);
+            mgcf.tag_2 = std::to_string(current_test_within_round);
+            mgcf.tag_3 = std::to_string(test_counter);
             // Determining which verse to present:
             // NOTE: you'll need to add code that accounts for 
             // cases in which this value exceeds the last verse
@@ -1575,6 +1575,10 @@ current_round < (multiplayer_rounds + 1); current_round++)
                 starting_verse_index_to_type + (current_round-1)*(
                     tests_per_round) + (
                     current_test_within_round -1));
+        Term::cout << "Round: " << current_round 
+        << " Player: " << mgcf.player 
+        << " Test within round: " << current_test_within_round 
+        << std::endl;
         bool completed_test = run_test(
             vrv[verse_index_to_type], trrv, wrrv, marathon_mode, 
             mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3);
