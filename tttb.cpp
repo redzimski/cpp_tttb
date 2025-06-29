@@ -102,6 +102,8 @@ std::string all_verses_typed_message = "All verses have already \
 been typed at least once! try another choice (such as i for a \
 non-marathon-mode session or s for a marathon-mode session).";
 
+std::string verses_file_path = "../Files/CPDB_for_TTTB.csv";
+
 /* Defining a struct that can represent each row
 of CPDB_for_TTTB.csv (the .csv file containing all
 Bible verses:) */
@@ -922,25 +924,12 @@ Term::cout << "Updated configuration setting." << std::endl;
 }
 }
 
+std::vector<Verse_Row> import_verses() {
 
-int main() {
-
-// Initializing our terminal:
-Term::terminal.setOptions(Term::Option::NoClearScreen, 
-Term::Option::NoSignalKeys, Term::Option::NoCursor, 
-Term::Option::Raw);
-if(!Term::is_stdin_a_tty()) { throw Term::Exception(
-    "The terminal is not attached to a TTY and therefore \
-can't catch user input. Exiting..."); }
-/* The following code was based in part on 
-https://github.com/jupyter-xeus/cpp-terminal/blob/
-master/examples/events.cpp . */
-
-//Reading relevant files into our program:
-
-
-// Creating a vector that can store all of the Bible verses found
-// within CPDB_for_TTTB.csv:
+// This function creates a vector that can store all of the Bible 
+// verses found within CPDB_for_TTTB.csv. Storing this code within
+// its own function allows it to be utilized within both the
+// single-player and multiplayer gameplay modes.
 
 
 // Note: I had considered reading data into a vector of 
@@ -959,13 +948,12 @@ high_resolution_clock::now();
 
 std::vector<Verse_Row> vrv; // vrv is short for 'Verse Row vector.'
 
-/* Reading data:
+/* Reading in data:
 This code was based largely on 
 https://github.com/vincentlaucsb/csv-parser?tab=
 readme-ov-file#indexing-by-column-names
 and on
 page 22 of A Tour of C++, 2nd Edition by Bjarne Stroustrup. */
-std::string verses_file_path = "../Files/CPDB_for_TTTB.csv";
 CSVReader reader(verses_file_path);
 for (auto& row: reader) {
     Verse_Row vr;
@@ -992,6 +980,22 @@ auto vrv_import_seconds = std::chrono::duration<double>(
 
 Term::cout << "Imported " << vrv.size() << " Bible verses in " <<
 vrv_import_seconds << " seconds." << std::endl;
+return (std::move(vrv));
+}
+
+void run_single_player_game() {
+
+// Importing Bible verses:
+// Note: it will be important to run this code at the start of
+// each game. If we only imported it at the very start of each
+// gameplay session, and the player ended up doing multiple
+// single-player games, it's possible that only the final set
+// of results would ultimately get saved to the Bible verse file.
+// Re-importing that file here allows any updates created within
+// previous single-player gameplay sessions to get incorporated
+// into the new session.
+
+std::vector<Verse_Row> vrv = import_verses();
 
 // Importing test result data:
 // I was also thinking about having trrv store unique pointers
@@ -1169,7 +1173,7 @@ To enter 'sequential marathon mode', in which you will continually \
 be asked to type (1) the verse following the one you just typed or \
 (2) (when starting this mode) a verse of your choice, enter 's.'\nTo \
 update game configuration settings, enter 'u'. Finally, to \
-exit the program and save your progress, enter 'e'." << std::endl;
+exit this session and save your progress, enter 'e'." << std::endl;
 
 Term::cin >> user_response;
 }
@@ -1445,5 +1449,263 @@ auto wrrv_export_seconds = std::chrono::duration<double>(
 Term::cout << "Exported " << wrrv.size() << " word results in " <<
 wrrv_export_seconds << " seconds." << std::endl;
 
-Term::cout << "Quitting program." << std::endl;
+Term::cout << "Quitting single-player gameplay session." << std::endl;
+}
+
+void run_multiplayer_game() {
+
+// Determining the start time of this multiplayer session (which 
+// will be incorporated into the name of the file that will store 
+// its results):
+
+auto multiplayer_start_time = std::chrono::
+high_resolution_clock::now();
+std::time_t unix_multiplayer_start_time = std::chrono::
+system_clock::to_time_t(multiplayer_start_time);
+    char multiplayer_start_container [25]; // This value could likely
+    // be reduced now that I've simplified the formatting instructions
+    // (more on this below).
+
+    // The following time formatting code does not use any
+    // separators or time zone info in order to prevent invalid
+    // filenames from being created on certain systems (and to
+    // reduce the length of the output.)
+    std::strftime(multiplayer_start_container,
+    25, "%Y%m%dT%H%M%S", std::localtime(&unix_multiplayer_start_time));
+    std::string multiplayer_start_time_as_string 
+    = multiplayer_start_container;
+
+
+// Importing Bible verses:
+
+std::vector<Verse_Row> vrv = import_verses();
+
+Term::cout << "Welcome to Type Through the Bible's multiplayer \
+mode! First, enter the names of all players. (Player names cannot \
+include whitespace.) You may enter them all within the same line \
+(separated by spaces) or one by one. Once all names have been \
+entered, enter 'c'." << std::endl;
+
+std::vector<std::string> player_names = {};
+
+std::string new_player_name;
+
+while (new_player_name != "c") {
+    Term::cin >> new_player_name;
+    if (new_player_name == "c")
+    {continue;} // This check prevents 'c' from being added 
+    // as an additional player.
+    player_names.push_back(new_player_name);
+    Term:: cout << "Added " << new_player_name << " to player list. \
+You may now enter the next player's name." << std::endl;
+}
+
+Term::cout << "Here are the " << player_names.size() << " players \
+who will be joining this game:" << std::endl;
+for (auto& player_name: player_names)
+{Term::cout << player_name << std::endl;}
+
+Term::cout << "Next, enter two integers. These will represent \
+how many rounds you would like to play, and how many consecutive \
+typing tests each player will perform each round." << std::endl;
+
+int multiplayer_rounds = 0;
+int tests_per_round = 0;
+
+Term::cin >> multiplayer_rounds >> tests_per_round;
+
+Term::cout << "This game will feature " << multiplayer_rounds << 
+" rounds with " << tests_per_round << " tests per round. With " <<
+player_names.size() << " players, this game will include " << 
+multiplayer_rounds * player_names.size() * tests_per_round << 
+" tests in total." << std::endl;
+
+Term::cout << "Finally, choose a string to incorporate into the \
+filename that will store your game results." << std::endl;
+
+std::string multiplayer_filename_string;
+
+Term::cin >> multiplayer_filename_string;
+
+std::string multiplayer_results_path = ("../Files/" 
++ multiplayer_start_time_as_string + "_" + 
+multiplayer_filename_string);
+
+Term::cout << "The results from this session will be available \
+at " << multiplayer_results_path << "." << std::endl;
+
+Term::cout << "Finally, enter the integer corresponding to the \
+verse ID at which you would like to begin the game." << std::endl;
+
+int starting_verse_index_to_type = select_verse_id(vrv);
+
+// The following struct will facilitate the process of adding
+// relevant information (incuding player names) to our test 
+// results file.
+
+Game_Config mgcf;
+
+bool marathon_mode = false;
+
+std::vector<Word_Result_Row> wrrv; 
+std::vector<Test_Result_Row> trrv; 
+
+int test_counter = 1; // This counter will store the total number 
+// of tests that have been completed so far.
+
+for (int current_round = 1; 
+current_round < (multiplayer_rounds + 1); current_round++)
+{
+    for (int player_index = 0; player_index <= player_names.size(); 
+    player_index++)
+    {
+        for (int current_test_within_round = 1; 
+        current_test_within_round < (
+            tests_per_round + 1); current_test_within_round++)
+
+            {mgcf.player = player_names[player_index];
+            mgcf.tag_1 = current_round;
+            mgcf.tag_2 = current_test_within_round;
+            mgcf.tag_3 = test_counter;
+            // Determining which verse to present:
+            // NOTE: you'll need to add code that accounts for 
+            // cases in which this value exceeds the last verse
+            // index within our Bible .csv file.
+            int verse_index_to_type = (
+                starting_verse_index_to_type + (current_round-1)*(
+                    tests_per_round) + (
+                    current_test_within_round -1));
+        bool completed_test = run_test(
+            vrv[verse_index_to_type], trrv, wrrv, marathon_mode, 
+            mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3);
+            
+            if (completed_test)
+            {test_counter++;}
+            }
+    }
+}
+
+Term::cout << "Finished multiplayer game!" << std::endl;
+
+// Add code here that compares players' results.
+
+
+// Exporting test results:
+
+// NOTE: Move this to a separate function so that this code can
+// get called by both your single-player and multiplayer modes.
+
+auto trrv_export_start_time = std::chrono::
+high_resolution_clock::now();
+
+
+
+std::ofstream test_results_output_filename {multiplayer_results_path};
+auto test_results_writer = make_csv_writer(
+    test_results_output_filename);
+
+    std::vector<std::string> header_row = {
+    "Unix_Test_Start_Time",
+    "Local_Test_Start_Time",    
+    "Unix_Test_End_Time",
+    "Local_Test_End_Time",
+    "Verse_ID",
+    "Verse_Code",
+    "Verse",
+    "Characters",
+    "WPM",
+    "Test_Seconds",
+    "Error_Rate",
+    "Error_and_Backspace_Rate",
+    "Marathon_Mode",
+    "Player",
+    "Tag_1",
+    "Tag_2",
+    "Tag_3"};
+
+    // Writing this header to the .csv file:
+    test_results_writer << header_row;
+    
+    for (int i=0; i < trrv.size(); ++i) {
+    std::vector<std::string> cols_as_strings = {
+    std::to_string(trrv[i].unix_test_start_time),
+    trrv[i].local_test_start_time,
+    std::to_string(trrv[i].unix_test_end_time),
+    trrv[i].local_test_end_time,
+    std::to_string(trrv[i].verse_id),
+    trrv[i].verse_code,
+    trrv[i].verse,
+    std::to_string(trrv[i].characters),
+    std::to_string(trrv[i].wpm),
+    std::to_string(trrv[i].test_seconds),
+    std::to_string(trrv[i].error_rate),
+    std::to_string(trrv[i].error_and_backspace_rate),
+    std::to_string(trrv[i].marathon_mode),
+    trrv[i].player,
+    trrv[i].tag_1,
+    trrv[i].tag_2,
+    trrv[i].tag_3
+    };
+    test_results_writer << cols_as_strings;
+    };
+
+auto trrv_export_end_time = std::chrono::
+high_resolution_clock::now();
+auto trrv_export_seconds = std::chrono::duration<double>(
+    trrv_export_end_time - trrv_export_start_time).count();
+Term::cout << "Exported " << trrv.size() << " test result(s) in " <<
+trrv_export_seconds << " seconds." << std::endl;
+
+
+Term::cout << "Note: Multiplayer gameplay code is still a work \
+in progress!" 
+<< std::endl;
+}
+
+
+int main() {
+
+// Initializing our terminal:
+Term::terminal.setOptions(Term::Option::NoClearScreen, 
+Term::Option::NoSignalKeys, Term::Option::NoCursor, 
+Term::Option::Raw);
+if(!Term::is_stdin_a_tty()) { throw Term::Exception(
+    "The terminal is not attached to a TTY and therefore \
+can't catch user input. Exiting..."); }
+/* The following code was based in part on 
+https://github.com/jupyter-xeus/cpp-terminal/blob/
+master/examples/events.cpp . */
+
+
+char gameplay_option = '0';
+while (gameplay_option != 'e') {
+
+Term::cout << "Welcome to the C++ Edition of Type Through \
+the Bible! for single-player mode, enter 's'. For multiplayer \
+mode, enter 'm'. To exit the game, press 'e.'" << std::endl;
+
+
+Term::cin >> gameplay_option; 
+switch (gameplay_option)
+
+    {
+    case 's':
+    {run_single_player_game();
+    continue;
+    }
+
+    case 'm':
+    {run_multiplayer_game();
+    continue;}
+
+    case 'e':
+    {Term::cout << "Exiting Type Through the Bible." << std::endl;
+    continue;}
+
+    default:
+    {Term::cout << "That input wasn't recognized. Please try again." 
+    << std::endl;}
+    }
+}
+
 }
