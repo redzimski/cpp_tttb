@@ -1,5 +1,5 @@
 /* C++ Version of Type Through the Bible
-(Still a very early work in progress!)
+(Still a work in progress!)
 
 By Kenneth Burchfiel
 Released under the MIT License
@@ -82,6 +82,7 @@ To dos (very incomplete list)!
 #include <memory>
 #include <algorithm>
 #include <vector>
+#include <utility>
 
 #include "csv.hpp" 
 #include "cpp-terminal/terminal.hpp"
@@ -983,6 +984,74 @@ vrv_import_seconds << " seconds." << std::endl;
 return (std::move(vrv));
 }
 
+void export_test_results(const std::vector<Test_Result_Row>& trrv, 
+const std::string& test_results_file_path)
+{
+// This function exports a set of test results to a specified file
+// path.
+
+auto trrv_export_start_time = std::chrono::
+high_resolution_clock::now();
+
+std::ofstream test_results_output_filename {test_results_file_path};
+auto test_results_writer = make_csv_writer(
+    test_results_output_filename);
+
+    std::vector<std::string> header_row = {
+    "Unix_Test_Start_Time",
+    "Local_Test_Start_Time",    
+    "Unix_Test_End_Time",
+    "Local_Test_End_Time",
+    "Verse_ID",
+    "Verse_Code",
+    "Verse",
+    "Characters",
+    "WPM",
+    "Test_Seconds",
+    "Error_Rate",
+    "Error_and_Backspace_Rate",
+    "Marathon_Mode",
+    "Player",
+    "Tag_1",
+    "Tag_2",
+    "Tag_3"};
+
+    // Writing this header to the .csv file:
+    test_results_writer << header_row;
+    
+    for (int i=0; i < trrv.size(); ++i) {
+    std::vector<std::string> cols_as_strings = {
+    std::to_string(trrv[i].unix_test_start_time),
+    trrv[i].local_test_start_time,
+    std::to_string(trrv[i].unix_test_end_time),
+    trrv[i].local_test_end_time,
+    std::to_string(trrv[i].verse_id),
+    trrv[i].verse_code,
+    trrv[i].verse,
+    std::to_string(trrv[i].characters),
+    std::to_string(trrv[i].wpm),
+    std::to_string(trrv[i].test_seconds),
+    std::to_string(trrv[i].error_rate),
+    std::to_string(trrv[i].error_and_backspace_rate),
+    std::to_string(trrv[i].marathon_mode),
+    trrv[i].player,
+    trrv[i].tag_1,
+    trrv[i].tag_2,
+    trrv[i].tag_3
+    };
+    test_results_writer << cols_as_strings;
+    };
+
+auto trrv_export_end_time = std::chrono::
+high_resolution_clock::now();
+auto trrv_export_seconds = std::chrono::duration<double>(
+    trrv_export_end_time - trrv_export_start_time).count();
+Term::cout << "Exported " << trrv.size() << " test result(s) in " <<
+trrv_export_seconds << " seconds." << std::endl;
+}
+
+
+
 void run_single_player_game() {
 
 // Importing Bible verses:
@@ -1153,7 +1222,11 @@ within the game as needed." << std::endl;
 std::string user_response = "";
 bool marathon_mode = false;
 
-// Main gameplay loop:
+std::vector<double> session_wpm_results = {}; // Stores all WPM values
+// from tests completed during this session (which will allow us
+// to share WPM-related stats before non-marathon races).
+
+// Main single-player gameplay loop:
 while (user_response != "e")
 {
 
@@ -1164,8 +1237,46 @@ int verse_index_to_type = -1; // We'll check for this value when
 // skipping the regular prompt with which users are presented):
 if (marathon_mode == false)
 {
-Term::cout << "Enter 'n' to type the next untyped verse; 'c' to type \
-the next verse; and 'i' to type a specific verse ID.\n\
+
+// Calculating the player's average WPM across (1) all races 
+// completed this session and (2) the last 10 races:
+
+double last_10_wpm_sum = 0;
+double session_wpm_sum = 0;
+double session_wpm_mean = 0;
+double last_10_wpm_mean = 0;
+
+if (session_wpm_results.size() >= 2)
+{
+    for (int i = 0; i < session_wpm_results.size(); ++i)
+    {
+        session_wpm_sum += session_wpm_results[i];
+        // Checking whether at least 10 races have been completed
+        // thus far
+        if (session_wpm_results.size() >= 10)
+        {
+        // Determining whether i is currently accessing one of the
+        // last 10 races completed by the user
+        if (i >= (session_wpm_results.size() - 10)) 
+        {last_10_wpm_sum += session_wpm_results[i];}
+        }
+    }
+    session_wpm_mean = session_wpm_sum / session_wpm_results.size();
+    last_10_wpm_mean = last_10_wpm_sum / 10;
+
+Term::cout << "Your mean WPM over the " << session_wpm_results.size() 
+<< " races you have completed this session is " 
+<< session_wpm_mean << "." << std::endl;
+}
+
+if (session_wpm_results.size() >= 10)
+{
+Term::cout << "Your mean WPM over your last 10 races is " << 
+last_10_wpm_mean  << "." << std::endl;
+}
+
+Term::cout << "Enter 'n' to type the next untyped verse; \
+'c' to type the next verse; and 'i' to type a specific verse ID.\n\
 To enter 'untyped marathon mode' \
 (in which you will continually be presented with the next \
 untyped verse until you exit out of a race), press 'm.'\n\
@@ -1282,9 +1393,16 @@ if (completed_test == false) {
 if (completed_test == true)
 // Updating previously_typed_verse_index so that it will be 
 // ready for use within options 's' and 'c':
-{previously_typed_verse_index = verse_index_to_type;}   
+{previously_typed_verse_index = verse_index_to_type;
+// Adding the most recent WPM within trrv (i.e. the WPM of the 
+// test that was just completed) to our vector of session-level
+// WPM results:
+
+session_wpm_results.push_back(trrv.back().wpm);
 
 }
+}
+
 }
 
 
@@ -1353,66 +1471,7 @@ auto vrv_export_seconds = std::chrono::duration<double>(
 Term::cout << "Exported " << vrv.size() << " Bible verses in " <<
 vrv_export_seconds << " seconds." << std::endl;
 
-// Exporting test results:
-
-auto trrv_export_start_time = std::chrono::
-high_resolution_clock::now();
-
-std::ofstream test_results_output_filename {test_results_file_path};
-auto test_results_writer = make_csv_writer(
-    test_results_output_filename);
-
-    header_row = {
-    "Unix_Test_Start_Time",
-    "Local_Test_Start_Time",    
-    "Unix_Test_End_Time",
-    "Local_Test_End_Time",
-    "Verse_ID",
-    "Verse_Code",
-    "Verse",
-    "Characters",
-    "WPM",
-    "Test_Seconds",
-    "Error_Rate",
-    "Error_and_Backspace_Rate",
-    "Marathon_Mode",
-    "Player",
-    "Tag_1",
-    "Tag_2",
-    "Tag_3"};
-
-    // Writing this header to the .csv file:
-    test_results_writer << header_row;
-    
-    for (int i=0; i < trrv.size(); ++i) {
-    std::vector<std::string> cols_as_strings = {
-    std::to_string(trrv[i].unix_test_start_time),
-    trrv[i].local_test_start_time,
-    std::to_string(trrv[i].unix_test_end_time),
-    trrv[i].local_test_end_time,
-    std::to_string(trrv[i].verse_id),
-    trrv[i].verse_code,
-    trrv[i].verse,
-    std::to_string(trrv[i].characters),
-    std::to_string(trrv[i].wpm),
-    std::to_string(trrv[i].test_seconds),
-    std::to_string(trrv[i].error_rate),
-    std::to_string(trrv[i].error_and_backspace_rate),
-    std::to_string(trrv[i].marathon_mode),
-    trrv[i].player,
-    trrv[i].tag_1,
-    trrv[i].tag_2,
-    trrv[i].tag_3
-    };
-    test_results_writer << cols_as_strings;
-    };
-
-auto trrv_export_end_time = std::chrono::
-high_resolution_clock::now();
-auto trrv_export_seconds = std::chrono::duration<double>(
-    trrv_export_end_time - trrv_export_start_time).count();
-Term::cout << "Exported " << trrv.size() << " test result(s) in " <<
-trrv_export_seconds << " seconds." << std::endl;
+export_test_results(trrv, test_results_file_path);
 
 // Exporting word results:
 
@@ -1451,6 +1510,7 @@ wrrv_export_seconds << " seconds." << std::endl;
 
 Term::cout << "Quitting single-player gameplay session." << std::endl;
 }
+
 
 void run_multiplayer_game() {
 
@@ -1531,8 +1591,13 @@ std::string multiplayer_results_path = ("../Files/Multiplayer/"
 + multiplayer_start_time_as_string + "_" + 
 multiplayer_filename_string + ".csv");
 
-Term::cout << "The results from this session will be available \
-at " << multiplayer_results_path << "." << std::endl;
+std::string mp_pivot_path = ("../Files/Multiplayer/" 
++ multiplayer_start_time_as_string + "_" + 
+multiplayer_filename_string + "_pivot.csv");
+
+Term::cout << "The full results from this session will be available \
+at " << multiplayer_results_path << "; mean WPMs for each player \
+will be stored at " << mp_pivot_path << "." << std::endl;
 
 Term::cout << "Finally, enter the integer corresponding to the \
 verse ID at which you would like to begin the game." << std::endl;
@@ -1550,7 +1615,10 @@ bool marathon_mode = false;
 std::vector<Word_Result_Row> wrrv; 
 std::vector<Test_Result_Row> trrv; 
 
-int test_counter = 1; // This counter will store the total number 
+std::map<std::string, std::vector<double>> mp_results_map; 
+// Map that will be used to calculate players' average WPMs
+
+int mp_test_counter = 1; // This counter will store the total number 
 // of tests that have been completed so far.
 
 for (int current_round = 1; 
@@ -1566,7 +1634,7 @@ current_round < (multiplayer_rounds + 1); current_round++)
             {mgcf.player = player_names[player_index];
             mgcf.tag_1 = std::to_string(current_round);
             mgcf.tag_2 = std::to_string(current_test_within_round);
-            mgcf.tag_3 = std::to_string(test_counter);
+            mgcf.tag_3 = std::to_string(mp_test_counter);
             // Determining which verse to present:
             // NOTE: you'll need to add code that accounts for 
             // cases in which this value exceeds the last verse
@@ -1581,17 +1649,60 @@ current_round < (multiplayer_rounds + 1); current_round++)
         << std::endl;
         bool completed_test = run_test(
             vrv[verse_index_to_type], trrv, wrrv, marathon_mode, 
-            mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3);
-            
+            mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3);            
             if (completed_test)
-            {test_counter++;}
+            {mp_test_counter++;
+            // Storing the player's WPM result (which can be 
+            // identified as the most recent WPM entry
+            // within trrv) within the WPM vector corresponding
+            // to his/her name in mp_results_map:
+            mp_results_map[mgcf.player].push_back(trrv.back().wpm);
+            }
             }
     }
 }
 
-Term::cout << "Finished multiplayer game!" << std::endl;
+// Calculating average WPMs for each player and determining
+// the winner:
 
-// Add code here that compares players' results.
+std::vector<std::pair<std::string, double>> player_wpm_pairs;
+
+// Adding up all WPMs for each player:
+for (std::string& player: player_names)
+{double player_wpm_sum = 0;
+    for (double& wpm: mp_results_map[player]){
+        player_wpm_sum += wpm;
+    }
+// Calculating the player's mean WPM, then adding it to our 
+// vector of player WPM pairs:
+player_wpm_pairs.push_back(std::pair<std::string, double>{
+    player, player_wpm_sum / mp_results_map[player].size()});
+
+}
+
+// Sorting the results by WPM:
+// This sort() call uses a lambda function that allows pairs to
+// get sorted by their WPM values in descending order.
+// the code was based on the examples shown at
+// https://en.cppreference.com/w/cpp/algorithm/sort.html .
+std::sort(player_wpm_pairs.begin(), player_wpm_pairs.end(), 
+[](std::pair<std::string, double> pair_1, std::pair<
+std::string, double> pair_2) {
+    return pair_1.second > pair_2.second;});
+
+Term::cout << "That concludes this multiplayer game. \
+Here are the average WPMs for each player:" << std::endl;
+
+for (auto player_wpm: player_wpm_pairs) {
+    Term::cout << player_wpm.first << ": " 
+<< player_wpm.second << std::endl;
+}
+
+
+// Printing the player with the highest average WPM: (Note: in the 
+// unlikely event of a tie, this player won't be the only winner.)
+Term::cout << "Congratulations, " << player_wpm_pairs[0].first 
+<< "--you won!" << std::endl; 
 
 
 // Exporting test results:
@@ -1599,71 +1710,42 @@ Term::cout << "Finished multiplayer game!" << std::endl;
 // NOTE: Move this to a separate function so that this code can
 // get called by both your single-player and multiplayer modes.
 
-auto trrv_export_start_time = std::chrono::
+export_test_results(trrv, multiplayer_results_path);
+
+// Exporting player_wpm_pairs data to a .csv file:
+
+auto mp_pivot_export_start_time = std::chrono::
 high_resolution_clock::now();
 
 
-
-std::ofstream test_results_output_filename {multiplayer_results_path};
-auto test_results_writer = make_csv_writer(
-    test_results_output_filename);
+std::ofstream mp_pivot_output_filename {
+    mp_pivot_path};
+auto mp_pivot_writer = make_csv_writer(
+    mp_pivot_output_filename);
 
     std::vector<std::string> header_row = {
-    "Unix_Test_Start_Time",
-    "Local_Test_Start_Time",    
-    "Unix_Test_End_Time",
-    "Local_Test_End_Time",
-    "Verse_ID",
-    "Verse_Code",
-    "Verse",
-    "Characters",
-    "WPM",
-    "Test_Seconds",
-    "Error_Rate",
-    "Error_and_Backspace_Rate",
-    "Marathon_Mode",
     "Player",
-    "Tag_1",
-    "Tag_2",
-    "Tag_3"};
+    "Mean_WPM"};
 
     // Writing this header to the .csv file:
-    test_results_writer << header_row;
+    mp_pivot_writer << header_row;
     
-    for (int i=0; i < trrv.size(); ++i) {
+    for (int i=0; i < player_wpm_pairs.size(); ++i) {
     std::vector<std::string> cols_as_strings = {
-    std::to_string(trrv[i].unix_test_start_time),
-    trrv[i].local_test_start_time,
-    std::to_string(trrv[i].unix_test_end_time),
-    trrv[i].local_test_end_time,
-    std::to_string(trrv[i].verse_id),
-    trrv[i].verse_code,
-    trrv[i].verse,
-    std::to_string(trrv[i].characters),
-    std::to_string(trrv[i].wpm),
-    std::to_string(trrv[i].test_seconds),
-    std::to_string(trrv[i].error_rate),
-    std::to_string(trrv[i].error_and_backspace_rate),
-    std::to_string(trrv[i].marathon_mode),
-    trrv[i].player,
-    trrv[i].tag_1,
-    trrv[i].tag_2,
-    trrv[i].tag_3
+    player_wpm_pairs[i].first,
+    std::to_string(player_wpm_pairs[i].second)
     };
-    test_results_writer << cols_as_strings;
+    mp_pivot_writer << cols_as_strings;
     };
 
-auto trrv_export_end_time = std::chrono::
+auto mp_pivot_export_end_time = std::chrono::
 high_resolution_clock::now();
-auto trrv_export_seconds = std::chrono::duration<double>(
-    trrv_export_end_time - trrv_export_start_time).count();
-Term::cout << "Exported " << trrv.size() << " test result(s) in " <<
-trrv_export_seconds << " seconds." << std::endl;
-
-
-Term::cout << "Note: Multiplayer gameplay code is still a work \
-in progress!" 
-<< std::endl;
+auto multiplayer_export_seconds = std::chrono::duration<double>(
+    mp_pivot_export_end_time 
+    - mp_pivot_export_start_time).count();
+Term::cout << "Exported " << player_wpm_pairs.size() << 
+" mean WPM rows in " <<
+multiplayer_export_seconds << " seconds." << std::endl;
 }
 
 
