@@ -26,3 +26,9 @@ verse_to_word_testbed_v2.cpp
 *_older_*
 tttb_unique_ptr_example.cpp
 unique_ptr_testbed_v2.cpp
+dual_int_cin_test
+dual_int_cin_test_via_try_catch
+dual_int_cin_test_via_try_catch.cpp
+dual_int_cin_test.cpp
+for_loop_testbed
+for_loop_testbed.cpp
