@@ -37,39 +37,78 @@ Blessed Carlo Acutis, pray for us!
 To dos (very incomplete list)!
 
     1. Implement an autosave option, at least for single-player
-    games, in which files get saved every 5 tests or so. 
-    (This will get trickier if you
-    implement parts 4 and 5, since you won't have a full copy
-    of word and test results to refer to.)
+    games, in which files get saved every 5 tests or so.
 
-    2. Think about ways to show and analyze stats (ideally using
-    C++, but perhaps via Python also)
+    2. Update the game so that:
+        a. Once a session has been finished, it saves test- and
+        word-level results to an autosave file using the same
+        autosave code that you created to resolve part 1.
+        
+        b. It then combines these new results with your existing
+        master test- and word-result files by *appending* them
+        to the latter. You should be able to do this by specifying
+        ios:app within the ostream initialization code; see
+        https://en.cppreference.com/w/cpp/io/basic_ofstream.html and
+        https://stackoverflow.com/a/76151007/13097194 for more 
+        details. (Once this combination is complete, the autosave
+        file will get deleted.)
 
-    3. Consider skipping the process of loading your existing
-    word_results data into memory. You won't really need it for
-    anything within the program, and by the time you type through
-    the whole Bible, this file could be around 33 MB in size.
+        c. Following a crash, you'll have the option to manually
+        rerun the function in part b to load your autosave results
+        to the new results. (You'll be able to detect a crash by 
+        the presence of the autosave results file, which normally
+        gets deleted following a successful transfer to your
+        master test- and word-result files.)
 
-    4. Similarly, consider skipping the process of loading test
-    result data into memory.
+    3. Store player and Tag 1 tags within word-level results. This
+    will be particularly useful for multiplayer results.
+    (Make sure you're storing keyboard info within tag 1.) Once you've
+    completed this task, update your multiplayer code to also
+    save word-level results.
 
-    5. In a separate script, compare the speed of (1) loading items
-    into a vector of values, then passing them by value; (2) loading
-    items into a vector of values, then passing them by reference
-    (your current approach); (3) loading items into a vector of
-    unique pointers to values, then passing them by reference or
-    by value; and (4) creating a unique pointer to a vector, then
-    loading items into it. (You could have a simulated dataset of
-    1 million rows with 1,000 columns each, then add each row's
-    columns together.)
+    4. Think about ways to show and analyze stats (ideally using
+    C++, but perhaps via Python also--particularly via the
+    Dash-Pivottable library (at least for single-player mode).
+    You could use this library to show different metrics
+    (total races or total character typed by date, 
+    average WPM by month, WPM by race number, etc.). For 
+    multiplayer games, you could allow the user to select games
+    to visualize via a dropdown. For word-based results,
+    the pivottable option could work, except that you may also
+    want to limit the results to the first 50 or so options;
+    this would be a good candidate for a custom Dash table, then.
 
-    6. Get Alt + Enter to work when no space is present (eg for the
+    (You might also find that creating your own custom Dash page,
+    or series of pages, would be easier--since you'll also want
+    to incorporate things like rolling averages.)
+
+    5. Get Alt + Enter to work when no space is present (eg for the
     very first word in the response). (You could
     just have this command reset the display in this situation.)
 
-    7. Update Readme with gameplay + compilation information.
+    6. Update Readme with gameplay + compilation information.
 
-    9. (Maybe) find a way to allow for spaces in tags.
+    7. Think about how to handle players' exiting out of 
+    multiplayer races prematurely. Also update your WPM
+    calculation code so that it doesn't show -nan for players
+    who haven't gone yet.
+
+    8. (Maybe) find a way to allow for spaces in tags.
+
+    9. See if there's a way to fully clear all of the terminal
+    within the cpp-terminal library that you're using, as otherwise,
+    your terminal will end up storing a ton of text, which might
+    cause performance issues for longer sessions.
+
+    10. Also update your code so that your screen gets cleared
+    right before a race. Ideally, there will be as little of a 'jump'
+    as possible between the player's pressing a start race button
+    and the actual start of the race.
+
+    11. Create binaries within Linux, Windows, and Mac, then go
+    ahead and publish your game on itch.io and publicize it within
+    various relevant communities. You could even get an ad
+    in the St. Thomas Aquinas bulletin for it!
 
 */
 
@@ -440,7 +479,7 @@ of that test.
                    << verse_row.verse << "\nThis \
 verse is " << verse_row.characters
                    << " characters long.\nPress \
-any key to begin the typing test."
+the space bar to begin the typing test."
                    << std::endl;
 
         // The following while statement allows the user to begin the
