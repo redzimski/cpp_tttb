@@ -36,35 +36,22 @@ Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
-    1. Implement an autosave option, at least for single-player
-    games, in which files get saved every 5 tests or so.
 
     2. Update the game so that:
-        a. Once a session has been finished, it saves test- and
-        word-level results to an autosave file using the same
-        autosave code that you created to resolve part 1.
-        
-        b. It then combines these new results with your existing
-        master test- and word-result files by *appending* them
-        to the latter. You should be able to do this by specifying
-        ios:app within the ostream initialization code; see
-        https://en.cppreference.com/w/cpp/io/basic_ofstream.html and
-        https://stackoverflow.com/a/76151007/13097194 for more 
-        details. (Once this combination is complete, the autosave
-        file will get deleted.)
+
 
         c. Following a crash, you'll have the option to manually
         rerun the function in part b to load your autosave results
         to the new results. (You'll be able to detect a crash by 
-        the presence of the autosave results file, which normally
-        gets deleted following a successful transfer to your
-        master test- and word-result files.)
+        the presence of the autosave results files, provided that
+        you delete these files after the normal end to a game.
+        (Note: this is optional--as players can also simply
+        copy and paste data into the original files. However,
+        you might want to suggest that they do so using LibreOffice
+        calc in order to ensure that Excel doesn't make unwanted
+        modifications to the timestamps contained within those
+        files.)
 
-    3. Store player and Tag 1 tags within word-level results. This
-    will be particularly useful for multiplayer results.
-    (Make sure you're storing keyboard info within tag 1.) Once you've
-    completed this task, update your multiplayer code to also
-    save word-level results.
 
     4. Think about ways to show and analyze stats (ideally using
     C++, but perhaps via Python also--particularly via the
@@ -99,11 +86,6 @@ To dos (very incomplete list)!
     within the cpp-terminal library that you're using, as otherwise,
     your terminal will end up storing a ton of text, which might
     cause performance issues for longer sessions.
-
-    10. Also update your code so that your screen gets cleared
-    right before a race. Ideally, there will be as little of a 'jump'
-    as possible between the player's pressing a start race button
-    and the actual start of the race.
 
     11. Create binaries within Linux, Windows, and Mac, then go
     ahead and publish your game on itch.io and publicize it within
@@ -142,6 +124,8 @@ been typed at least once! try another choice (such as i for a \
 non-marathon-mode session or s for a marathon-mode session).";
 
 std::string verses_file_path = "../Files/CPDB_for_TTTB.csv";
+std::string autosaved_verses_file_path = "../Files/\
+autosaved_CPDB_for_TTTB.csv";
 
 /* Defining a struct that can represent each row
 of CPDB_for_TTTB.csv (the .csv file containing all
@@ -223,13 +207,17 @@ struct Word_Result_Row
     // I could try this approach with other structs as well.
     long last_character_index = -1;
     // The starting character could also be stored, but since this
-    // value will be used as a map key, it will probably be redundant to
+    // value will be used as a map key, it would be redundant to
     // include it here also.
     long word_length = -1; // an int would likely work fine here.
     double wpm = -1.0;
     double test_seconds = -1.0;
     double error_rate = -1.0;
     double error_and_backspace_rate = -1.0;
+    std::string player = "";
+    std::string tag_1 = "";
+    std::string tag_2 = "";
+    std::string tag_3 = "";
 };
 
 // Defining a set of configuration settings that can be updated
@@ -319,7 +307,8 @@ passed to it in order to identify all words within the verse;
 their starting and ending characters; and their lengths. This
 information will then be stored within a map of Word_Result_Row objects
 that the typing test code can access in order to calculate word-level
-WPM data.*/
+WPM data. */
+
 {
     // Initializing several variables here so that they can get
     // utilized within the following loops:
@@ -474,10 +463,14 @@ of that test.
     // within marathon mode, thus allowing users to go directly
     // into the typing test.
     {
-        Term::cout << "Your next verse to type is " << 
-        verse_row.verse_code << ":\n"
-                   << verse_row.verse << "\nThis \
-verse is " << verse_row.characters
+    // In order to make the transition from the following dialog
+    // to the actual test less jarring, I chose to place the verse
+    // at the top of the screen, exactly where it will appear
+    // during the test itself.
+        Term::cout << Term::clear_screen() << Term::cursor_move(
+    1, 1) << verse_row.verse <<
+"\n\nYour next verse to type (" << verse_row.verse_code 
+<< ") is shown above. This verse is " << verse_row.characters
                    << " characters long.\nPress \
 the space bar to begin the typing test."
                    << std::endl;
@@ -862,7 +855,11 @@ including backspaces)."
             wrr.wpm = word_map_value.wpm;
             wrr.error_rate = word_map_value.error_rate;
             wrr.error_and_backspace_rate =
-                word_map_value.error_and_backspace_rate;
+            word_map_value.error_and_backspace_rate;
+            wrr.player = player;
+            wrr.tag_1 = tag_1;
+            wrr.tag_2 = tag_2;
+            wrr.tag_3 = tag_3;
             wrrv.push_back(wrr);
         }
 
@@ -1028,7 +1025,8 @@ enter 'y.' To try again, enter 'n.'" << std::endl;
     }
 }
 
-std::vector<Verse_Row> import_verses()
+std::vector<Verse_Row> import_verses(
+    const std::string& verses_file_path)
 {
 
     // This function creates a vector that can store all of the Bible
@@ -1090,18 +1088,58 @@ std::vector<Verse_Row> import_verses()
 }
 
 void export_test_results(const std::vector<Test_Result_Row> &trrv,
-                         const std::string &test_results_file_path)
+                         const std::string &test_results_file_path,
+                         bool include_header_row = false,
+                         bool autosave_mode = false)
 {
     // This function exports a set of test results to a specified file
-    // path.
+    // path. 
+    // If include_header_row is set to true, a header row will be 
+    // added to the beginning of the .csv file. This will only be 
+    // necessary for multiplayer games; in all other cases, a header
+    // row will already be present, or its addition could cause
+    // issues later on (e.g. when trying to add autosave data
+    // to a .csv file.)
+    // If autosave_mode is set to true, the original contents
+    // of test_results_file_path will get cleared out and replaced
+    // with the latest contents. This is desirable for 
+    // autosave files (as it prevents duplicate copies of the same
+    // results from getting written). If set to false,
+    // the function will instead *append* the latest set of results
+    // to any pre-existing results within test_results_file_path, 
+    // which should save time relative to first loading all 
+    // pre-existing results into the game.
 
     auto trrv_export_start_time = std::chrono::
         high_resolution_clock::now();
 
-    std::ofstream test_results_output_filename{test_results_file_path};
-    auto test_results_writer = make_csv_writer(
-        test_results_output_filename);
+    // Determiing whether to clear the file to which data will
+    // be written or append new rows to existing ones:
+    // For more details on std::ios::app (which instructs the program
+    // to append new lines to the end of this existing file),
+    // see https://en.cppreference.com/w/cpp/io/basic_ofstream.html 
+    // and https://stackoverflow.com/a/76151007/13097194 .
+    // For the use of std::ios_base::openmode,
+    // see https://en.cppreference.com/w/cpp/io/ios_base/openmode .
+    // This StackOverflow post by mark sabido indicates that
+    // we'll need to specify trunc in order to replace a longer
+    // set of autosave data (i.e. from a previous game) with 
+    // a shorter set:
+    // https://stackoverflow.com/questions/43766410/
+    // overwrite-an-existing-text-file-c#comment126848651_43766778
 
+    std::ios_base::openmode write_mode = std::ios::app;
+
+    if (autosave_mode == true)
+        {write_mode = std::ios::trunc;}
+    
+    std::ofstream test_results_ofstream{
+        test_results_file_path, write_mode};
+    
+    auto test_results_writer = make_csv_writer(test_results_ofstream);
+
+    if (include_header_row == true)
+    {
     std::vector<std::string> header_row = {
         "Unix_Test_Start_Time",
         "Local_Test_Start_Time",
@@ -1121,8 +1159,12 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
         "Tag_2",
         "Tag_3"};
 
+    
+
     // Writing this header to the .csv file:
     test_results_writer << header_row;
+    }
+
 
     for (int i = 0; i < trrv.size(); ++i)
     {
@@ -1157,6 +1199,141 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
     " seconds." << std::endl;
 }
 
+void export_word_results(const std::vector<Word_Result_Row> &wrrv,
+                         const std::string &word_results_file_path,
+                         bool include_header_row = false,
+                         bool autosave_mode = false)
+// This function is similar to export_test_results except that it
+// saves word-level rather than test-level results.
+{
+
+    auto wrrv_export_start_time = std::chrono::
+        high_resolution_clock::now();
+
+    std::ios_base::openmode write_mode = std::ios::app;
+
+    if (autosave_mode == true)
+        {write_mode = std::ios::trunc;}
+    
+    std::ofstream word_results_ofstream{
+        word_results_file_path, write_mode};
+    
+    auto word_results_writer = make_csv_writer(word_results_ofstream);
+
+if (include_header_row == true)
+    {std::vector<std::string> header_row = {
+        "Word",
+        "WPM",
+        "Error_Rate",
+        "Error_and_Backspace_Rate",
+        "Player",
+        "Tag_1",
+        "Tag_2",
+        "Tag_3"
+        };
+
+    // Writing this header to the .csv file:
+    word_results_writer << header_row;
+    }
+
+    for (int i = 0; i < wrrv.size(); ++i)
+    {
+        std::vector<std::string> cols_as_strings = {
+            wrrv[i].word,
+            std::to_string(wrrv[i].wpm),
+            std::to_string(wrrv[i].error_rate),
+            std::to_string(wrrv[i].error_and_backspace_rate),
+            wrrv[i].player,
+            wrrv[i].tag_1,
+            wrrv[i].tag_2,
+            wrrv[i].tag_3};
+        word_results_writer << cols_as_strings;
+    };
+
+    auto wrrv_export_end_time = std::chrono::
+        high_resolution_clock::now();
+    auto wrrv_export_seconds = std::chrono::duration<double>(
+                    wrrv_export_end_time - wrrv_export_start_time)
+                                   .count();
+    Term::cout << "Exported " << wrrv.size() << " word results in " 
+    << wrrv_export_seconds << " seconds." << std::endl;   
+}
+
+
+void export_verses(const std::vector<Verse_Row> &vrv,
+    const std::string& verses_file_path)
+    /* This function saves the updated copy of our table of Bible
+    verses (with new completed-test and best-WPM data) to a .csv file.
+    Because these exports will always include headers, and because
+    verses will never need to be appended to an existing set of 
+    verses, this function does not need the include_header_row
+    and autosave_mode parameters found within export_test_results()
+    and export_word_results().
+
+    This section was based on the documentation found at
+    https://github.com/vincentlaucsb/csv-parser?
+    tab=readme-ov-file#writing-csv-files
+    and
+    https://vincela.com/csv/classcsv_1_1DelimWriter.html .*/
+{
+    auto vrv_export_start_time = std::chrono::
+        high_resolution_clock::now();
+
+    std::ofstream verse_ofstream{verses_file_path};
+    auto verses_writer = make_csv_writer(verse_ofstream);
+
+    // Writing header row to .csv file:
+    // It's crucial that the order of these rows matches the order
+    // of the corresponding field entries within cols_as_strings.
+    std::vector<std::string> header_row = {
+        "Verse_ID",
+        "OT_NT",
+        "Book",
+        "Book_Num",
+        "Chapter_Num",
+        "Verse_Num",
+        "Verse_Code",
+        "Verse",
+        "Characters",
+        "Tests",
+        "Best_WPM"};
+
+    // Writing this header to the .csv file:
+    verses_writer << header_row;
+
+    // Converting the fields within each row into a vector
+    // of strings:
+    // See
+    // https://stackoverflow.com/a/23855901/13097194
+    // (which actualy recommends a potentially better solution
+    // outside of the stanard library) for to_string().
+    for (int i = 0; i < vrv.size(); ++i)
+    {
+        std::vector<std::string> cols_as_strings = {
+            std::to_string(vrv[i].verse_id),
+            vrv[i].ot_nt,
+            vrv[i].book,
+            std::to_string(vrv[i].book_num),
+            vrv[i].chapter_num,
+            std::to_string(vrv[i].verse_num),
+            vrv[i].verse_code,
+            vrv[i].verse,
+            std::to_string(vrv[i].characters),
+            std::to_string(vrv[i].tests),
+            std::to_string(vrv[i].best_wpm)};
+        verses_writer << cols_as_strings;
+    };
+
+    auto vrv_export_end_time = std::chrono::
+        high_resolution_clock::now();
+    auto vrv_export_seconds = std::chrono::duration<double>(
+                         vrv_export_end_time - vrv_export_start_time)
+                                  .count();
+    Term::cout << "Exported " << vrv.size() << " Bible verses in " 
+    << vrv_export_seconds << " seconds." << std::endl;
+}
+
+
 void run_single_player_game()
 {
 
@@ -1170,7 +1347,7 @@ void run_single_player_game()
     // previous single-player gameplay sessions to get incorporated
     // into the new session.
 
-    std::vector<Verse_Row> vrv = import_verses();
+    std::vector<Verse_Row> vrv = import_verses(verses_file_path);
 
     // Importing test result data:
     // I was also thinking about having trrv store unique pointers
@@ -1185,76 +1362,18 @@ void run_single_player_game()
     // 'Test result row vector.'
 
     std::string test_results_file_path = "../Files/test_results.csv";
-    CSVReader test_results_reader(test_results_file_path);
-    for (auto &row : test_results_reader)
-    {
-        Test_Result_Row trr;
-trr.unix_test_start_time = row["Unix_Test_Start_Time"].get<long>();
-trr.local_test_start_time = row["Local_Test_Start_Time"].get<>();
-trr.unix_test_end_time = row["Unix_Test_End_Time"].get<long>();
-trr.local_test_end_time = row["Local_Test_End_Time"].get<>();
-trr.verse_id = row["Verse_ID"].get<int>();
-// The following verse objects could get replaced
-// with unique pointers also.
-trr.verse_code = row["Verse_Code"].get<>();
-trr.verse = row["Verse"].get<>();
-trr.characters = row["Characters"].get<int>();
-trr.wpm = row["WPM"].get<double>();
-trr.test_seconds = row["Test_Seconds"].get<double>();
-trr.error_rate = row["Error_Rate"].get<double>();
-trr.error_and_backspace_rate = row[
-    "Error_and_Backspace_Rate"].get<double>();
-trr.marathon_mode = row["Marathon_Mode"].get<int>();
-trr.player = row["Player"].get<>();
-trr.tag_1 = row["Tag_1"].get<>();
-trr.tag_2 = row["Tag_2"].get<>();
-trr.tag_3 = row["Tag_3"].get<>();
+    std::string autosaved_test_results_file_path = "../Files/\
+autosaved_test_results.csv";
 
-        trrv.push_back(trr);
-    }
-
-    auto trrv_import_end_time = std::chrono::
-        high_resolution_clock::now();
-
-    auto trrv_import_seconds = std::chrono::duration<double>(
-                                   trrv_import_end_time - trrv_import_start_time)
-                                   .count();
-
-    Term::cout << "Imported " << trrv.size() << 
-    " test result(s) in " << trrv_import_seconds 
-    << " seconds." << std::endl;
-
-    // Importing word result data:
-
-    auto wrrv_import_start_time = std::chrono::
-        high_resolution_clock::now();
 
     std::vector<Word_Result_Row> wrrv; // wrrv is short for
     // 'Word result row vector.'
 
     std::string word_results_file_path = "../Files/word_results.csv";
-    CSVReader word_results_reader(word_results_file_path);
-    for (auto &row : word_results_reader)
-    {
-        Word_Result_Row wrr;
-        wrr.word = row["Word"].get<>();
-        wrr.wpm = row["WPM"].get<double>();
-        wrr.error_rate = row["Error_Rate"].get<double>();
-        wrr.error_and_backspace_rate = row[
-            "Error_and_Backspace_Rate"].get<double>();
-        wrrv.push_back(wrr);
-    }
+    std::string autosaved_word_results_file_path = "../Files/\
+autosaved_word_results.csv";
 
-    auto wrrv_import_end_time = std::chrono::
-        high_resolution_clock::now();
-
-    auto wrrv_import_seconds = std::chrono::duration<double>(
-                    wrrv_import_end_time - wrrv_import_start_time)
-                                   .count();
-
-    Term::cout << "Imported " << wrrv.size() 
-    << " word results in " << wrrv_import_seconds 
-    << " seconds." << std::endl;
+ 
 
     // Counting the number of unread verses so far:
 
@@ -1540,116 +1659,43 @@ from which to start this mode." << std::endl;
 
                 session_wpm_results.push_back(trrv.back().wpm);
             }
+
+
+            // Every 10 races, the player's updated Bible verse file,
+            // test-level results, and word-level results will be 
+            // saved to autosave files.
+            if ((session_wpm_results.size() > 0) && (
+                session_wpm_results.size() % 10 == 0))
+            {
+            Term::cout << "Performing autosave." << std::endl;
+            export_verses(
+                vrv, autosaved_verses_file_path);
+            export_test_results(
+                trrv, autosaved_test_results_file_path,
+                false, true);
+            export_word_results(
+                wrrv, autosaved_word_results_file_path,
+                false, true);
+            Term::cout << "Autosave complete." << std::endl;
+                }
+
         }
     }
 
-    /* Saving the updated copy of our table of verses to a .csv file for
-    testing purposes: */
+    // Exporting Bible verses, test results, and word results:
+    export_verses(vrv, verses_file_path);
 
-    /* This section was based on the documentation found at
-    https://github.com/vincentlaucsb/csv-parser?
-    tab=readme-ov-file#writing-csv-files
-    and
-    https://vincela.com/csv/classcsv_1_1DelimWriter.html .*/
+    export_test_results(trrv, test_results_file_path,
+    false, false);
 
-    auto vrv_export_start_time = std::chrono::
-        high_resolution_clock::now();
-
-    std::ofstream verse_output_filename{verses_file_path};
-    auto verses_writer = make_csv_writer(verse_output_filename);
-
-    // Writing header row to .csv file:
-    // It's crucial that the order of these rows matches the order
-    // of the corresponding field entries within cols_as_strings.
-    std::vector<std::string> header_row = {
-        "Verse_ID",
-        "OT_NT",
-        "Book",
-        "Book_Num",
-        "Chapter_Num",
-        "Verse_Num",
-        "Verse_Code",
-        "Verse",
-        "Characters",
-        "Tests",
-        "Best_WPM"};
-
-    // Writing this header to the .csv file:
-    verses_writer << header_row;
-
-    // Converting the fields within each row into a vector
-    // of strings:
-    // See
-    // https://stackoverflow.com/a/23855901/13097194
-    // (which actualy recommends a potentially better solution
-    // outside of the stanard library) for to_string().
-    for (int i = 0; i < vrv.size(); ++i)
-    {
-        std::vector<std::string> cols_as_strings = {
-            std::to_string(vrv[i].verse_id),
-            vrv[i].ot_nt,
-            vrv[i].book,
-            std::to_string(vrv[i].book_num),
-            vrv[i].chapter_num,
-            std::to_string(vrv[i].verse_num),
-            vrv[i].verse_code,
-            vrv[i].verse,
-            std::to_string(vrv[i].characters),
-            std::to_string(vrv[i].tests),
-            std::to_string(vrv[i].best_wpm)};
-        verses_writer << cols_as_strings;
-    };
-
-    auto vrv_export_end_time = std::chrono::
-        high_resolution_clock::now();
-    auto vrv_export_seconds = std::chrono::duration<double>(
-                                  vrv_export_end_time - vrv_export_start_time)
-                                  .count();
-    Term::cout << "Exported " << vrv.size() << " Bible verses in " 
-    << vrv_export_seconds << " seconds." << std::endl;
-
-    export_test_results(trrv, test_results_file_path);
-
-    // Exporting word results:
-
-    auto wrrv_export_start_time = std::chrono::
-        high_resolution_clock::now();
-
-    std::ofstream word_results_output_filename{word_results_file_path};
-    auto word_results_writer = make_csv_writer(
-        word_results_output_filename);
-
-    header_row = {
-        "Word",
-        "WPM",
-        "Error_Rate",
-        "Error_and_Backspace_Rate"};
-
-    // Writing this header to the .csv file:
-    word_results_writer << header_row;
-
-    for (int i = 0; i < wrrv.size(); ++i)
-    {
-        std::vector<std::string> cols_as_strings = {
-            wrrv[i].word,
-            std::to_string(wrrv[i].wpm),
-            std::to_string(wrrv[i].error_rate),
-            std::to_string(wrrv[i].error_and_backspace_rate),
-        };
-        word_results_writer << cols_as_strings;
-    };
-
-    auto wrrv_export_end_time = std::chrono::
-        high_resolution_clock::now();
-    auto wrrv_export_seconds = std::chrono::duration<double>(
-                    wrrv_export_end_time - wrrv_export_start_time)
-                                   .count();
-    Term::cout << "Exported " << wrrv.size() << " word results in " 
-    << wrrv_export_seconds << " seconds." << std::endl;
+    export_word_results(wrrv, word_results_file_path,
+    false, false);
 
     Term::cout << "Quitting single-player gameplay session." 
     << std::endl;
+
 }
+
 
 std::vector<std::pair<std::string, double>> calculate_wpms_by_player(
     const std::vector<std::string>& player_names,  
@@ -1736,7 +1782,7 @@ std::string multiplayer_start_time_as_string = multiplayer_start_container;
 
     // Importing Bible verses:
 
-    std::vector<Verse_Row> vrv = import_verses();
+    std::vector<Verse_Row> vrv = import_verses(verses_file_path);
 
     Term::cout << "Welcome to Type Through the Bible's multiplayer \
 mode! First, enter the names of all players. (Player names cannot \
@@ -1827,16 +1873,25 @@ optional.)" << std::endl;
 
     Term::cin >> multiplayer_filename_string;
 
-    std::string multiplayer_results_path = (
+// Initializing filenames for test results, word results, and 
+// a pivot table that will store players' avearge WPMs;
+
+    std::string multiplayer_test_results_path = (
 "../Files/Multiplayer/" + multiplayer_start_time_as_string + "_" +
-multiplayer_filename_string + ".csv");
+multiplayer_filename_string + "_test_results.csv");
+
+    std::string multiplayer_word_results_path = (
+"../Files/Multiplayer/" + multiplayer_start_time_as_string + "_" +
+multiplayer_filename_string + "_word_results.csv");
 
     std::string mp_pivot_path = ("../Files/Multiplayer/" + 
 multiplayer_start_time_as_string + "_" + 
 multiplayer_filename_string + "_pivot.csv");
 
-    Term::cout << "The full results from this session will be \
-available at " << multiplayer_results_path << "; mean WPMs for \
+    Term::cout << "The full set of test- and word-level results \
+from this session will be available at " << 
+multiplayer_test_results_path << " and " << 
+multiplayer_word_results_path << ", respectively; mean WPMs for \
 each player will be stored at "
                << mp_pivot_path << "." << std::endl;
 
@@ -1910,6 +1965,28 @@ starting_verse_index_to_type + (current_round - 1) * (
                            << " Test within round: " 
                            << current_test_within_round
                            << std::endl;
+    // The following keypress prompt was added in so that players
+    // will be able to view information about WPM stats and
+    // the next test before run_test() gets called. (That function
+    // clears the screen, so without this prompt, players wouldn't
+    // have a chance to see this information.)
+                Term::cout << "Press the space bar to \
+continue." << std::endl;
+    while (true)
+        {
+            Term::Event event = Term::read_event();
+            switch (event.type())
+            {
+            case Term::Event::Type::Key:
+            {
+                Term::Key key(event);
+                break;
+            }
+            default:
+                break;
+            }
+            break;
+        };
                 bool completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                     mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3);
@@ -1940,18 +2017,27 @@ starting_verse_index_to_type + (current_round - 1) * (
     }
 
     // Exporting test results:
+    // Note that, because these test and word result files are
+    // new documents, header rows will need to be added in for 
+    // both of them.
 
-    export_test_results(trrv, multiplayer_results_path);
+    export_test_results(trrv, multiplayer_test_results_path,
+    true, false);
+
+    // Exporting word results:
+
+    export_word_results(wrrv, multiplayer_word_results_path,
+    true, false);
 
     // Exporting player_wpm_pairs data to a .csv file:
 
     auto mp_pivot_export_start_time = std::chrono::
         high_resolution_clock::now();
 
-    std::ofstream mp_pivot_output_filename{
+    std::ofstream mp_pivot_ofstream{
         mp_pivot_path};
     auto mp_pivot_writer = make_csv_writer(
-        mp_pivot_output_filename);
+        mp_pivot_ofstream);
 
     std::vector<std::string> header_row = {
         "Player",
