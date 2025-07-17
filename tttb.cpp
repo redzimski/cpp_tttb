@@ -7,6 +7,12 @@ Released under the MIT License
 Link to project's GitHub page:
 https://github.com/kburchfiel/cpp_tttb
 
+Note: As with my other GitHub projects, I chose not to use 
+generative AI tools when writing, debugging,
+or adding documentation to this file. I wanted to learn how to 
+perform these tasks in C++ (or in a C++ library) rather than
+simply learn how to get an AI tool to create them.
+
 This code also makes extensive use of the following
 open-source libraries:
 
@@ -50,7 +56,7 @@ To dos (very incomplete list)!
         you might want to suggest that they do so using LibreOffice
         calc in order to ensure that Excel doesn't make unwanted
         modifications to the timestamps contained within those
-        files.)
+        files.) 
 
 
     4. Think about ways to show and analyze stats (ideally using
@@ -69,28 +75,19 @@ To dos (very incomplete list)!
     or series of pages, would be easier--since you'll also want
     to incorporate things like rolling averages.)
 
-    5. Get Alt + Enter to work when no space is present (eg for the
-    very first word in the response). (You could
-    just have this command reset the display in this situation.)
-
     6. Update Readme with gameplay + compilation information.
 
-    7. Think about how to handle players' exiting out of 
-    multiplayer races prematurely. Also update your WPM
-    calculation code so that it doesn't show -nan for players
-    who haven't gone yet.
+    8. (Maybe) find a way to allow for spaces in tags. [Optional]
 
-    8. (Maybe) find a way to allow for spaces in tags.
-
-    9. See if there's a way to fully clear all of the terminal
-    within the cpp-terminal library that you're using, as otherwise,
-    your terminal will end up storing a ton of text, which might
-    cause performance issues for longer sessions.
+    9. Add more documentation to this file as needed.
 
     11. Create binaries within Linux, Windows, and Mac, then go
     ahead and publish your game on itch.io and publicize it within
     various relevant communities. You could even get an ad
     in the St. Thomas Aquinas bulletin for it!
+
+    12. Create a YouTube video that describes this project and 
+    provides a gameplay example.
 
 */
 
@@ -412,7 +409,8 @@ bool run_test(
     Verse_Row &verse_row, std::vector<Test_Result_Row> &trrv,
     std::vector<Word_Result_Row> &wrrv, const bool &marathon_mode,
     const std::string &player, const std::string &tag_1,
-    const std::string &tag_2, const std::string &tag_3)
+    const std::string &tag_2, const std::string &tag_3,
+    const bool allow_quitting = true)
 /* This function allows the player to complete a single typing test.
 It then updates the verse_row, trrv, and wrrv vectors with the results
 of that test.
@@ -467,7 +465,27 @@ of that test.
     // to the actual test less jarring, I chose to place the verse
     // at the top of the screen, exactly where it will appear
     // during the test itself.
-        Term::cout << Term::clear_screen() << Term::cursor_move(
+    // Note: clear_screen() hides content within the current 
+    // window by scrolling down until the window is blank;
+    // clear() removes content further up in the terminal that is 
+    // now out of view. Thus, printing clear_screen(), followed by
+    // clear() and a command to move the cursor to the top left,
+    // prevents the terminal from filling up with previous entries 
+    // that no longer
+    // need to be saved in memory. (Note that, without the 
+    // inclusion of clear(), a new screen would be stored in 
+    // memory for all, or almost all *keypresses* during typing 
+    // tests--which I imagine could cause all sorts of 
+    // memory-related issues, at least on lower-powered devices.
+    // I found clear() within the cpp-terminal documentation;
+    // you can search for it by looking for the text [3J (which
+    // is part of a particular 'Erase in Display' ANSI erase 
+    // sequence; see https://en.wikipedia.org/wiki/ANSI_escape_code#SGR
+    // and Goran's AskUbuntu response at
+    // https://askubuntu.com/a/473770/1685413 .
+
+        Term::cout << Term::clear_screen() << Term::terminal.clear() 
+        << Term::cursor_move(
     1, 1) << verse_row.verse <<
 "\n\nYour next verse to type (" << verse_row.verse_code 
 << ") is shown above. This verse is " << verse_row.characters
@@ -513,7 +531,7 @@ the space bar to begin the typing test."
     // not work; instead, it may be necessary to use std::endl .
 
     Term::cout << Term::cursor_move(1, 1) << Term::clear_screen() 
-    << verse_row.verse << std::endl;
+    << Term::terminal.clear()  << verse_row.verse << std::endl;
 
     // Starting our timing clock:
     // (This code was based on p. 1010 of The C++ Programming Language,
@@ -571,7 +589,8 @@ the space bar to begin the typing test."
             {
                 char_to_add = " ";
             }
-            else if (keyname == "Ctrl+C")
+            else if ((keyname == "Ctrl+C") && 
+            (allow_quitting == true))
             {
                 exit_test = true;
                 completed_test = false;
@@ -599,6 +618,9 @@ the space bar to begin the typing test."
             // as well, the loop will skip over it and search instead
             // for the second-to-last space. (That way, repeated Alt+Del
             // entries can successfully remove multiple words.)
+            // Note: the cpp-terminal code interpreted the combination
+            // of the Alt and Backspace keys, at least on 
+            // Linux, as Alt + Delete.
             {
                 backspace_counter++;
                 word_backspace_counter++;
@@ -613,6 +635,16 @@ the space bar to begin the typing test."
                     {
                         user_string = user_string.substr(0, j + 1);
                         break;
+                    }
+                    if (j == 0) // In this case, we made it to 
+                    // the beginning of the string without finding
+                    // any space. Therefore, we'll go ahead and 
+                    // delete the entire sequence that the player
+                    // has typed so far. (This inclusion allows
+                    // Alt + Delete to still work when the player
+                    // hasn't yet finished his/her first word.)
+                    {user_string = "";
+                    break;
                     }
                 }
             }
@@ -732,7 +764,8 @@ word_map[latest_first_character_index].error_and_backspace_rate =
             rather than earlier in the loop--as Term::clear_screen() will erase
             all other post-keypress output.*/
 
-            Term::cout << Term::clear_screen() << Term::cursor_move(
+            Term::cout << Term::clear_screen() << 
+            Term::terminal.clear() << Term::cursor_move(
                 1, 1)
                        << verse_row.verse << std::endl
                        << Term::color_fg(print_color) << user_string
@@ -1709,8 +1742,10 @@ std::vector<std::pair<std::string, double>> calculate_wpms_by_player(
     
     // Calculating WPMs for each player:
     for (auto& player : player_names)
-    {
-        // The following std::accumulate() code was based on
+    {if (mp_results_map[player].size() > 0) // Without this check,
+    // a '-nan' entry will show in the output for players who 
+    // haven't yet performed their first round.
+        {// The following std::accumulate() code was based on
         // https://en.cppreference.com/w/cpp/
         // algorithm/accumulate.html .
         double player_wpm_sum = std::accumulate(
@@ -1721,6 +1756,7 @@ std::vector<std::pair<std::string, double>> calculate_wpms_by_player(
         // vector of player WPM pairs:
         player_wpm_pairs.push_back(std::pair<std::string, double>{
             player, player_wpm_sum / mp_results_map[player].size()});
+        }
     }
 
     // Sorting the results by WPM:
@@ -1784,12 +1820,14 @@ std::string multiplayer_start_time_as_string = multiplayer_start_container;
 
     std::vector<Verse_Row> vrv = import_verses(verses_file_path);
 
-    Term::cout << "Welcome to Type Through the Bible's multiplayer \
+    // Printing an initial welcome message:
+    Term::cout << Term::clear_screen() << Term::terminal.clear() 
+    << Term::cursor_move(
+    1, 1) << "Welcome to Type Through the Bible's multiplayer \
 mode! First, enter the names of all players. (Player names cannot \
 include whitespace.) You may enter them all within the same line \
 (separated by spaces) or one by one. Once all names have been \
-entered, enter 'c'."
-               << std::endl;
+entered, enter 'c'." << std::endl;
 
     std::vector<std::string> player_names = {};
 
@@ -1972,7 +2010,8 @@ starting_verse_index_to_type + (current_round - 1) * (
     // have a chance to see this information.)
                 Term::cout << "Press the space bar to \
 continue." << std::endl;
-    while (true)
+    bool proceed_to_test = false;
+    while (proceed_to_test == false)
         {
             Term::Event event = Term::read_event();
             switch (event.type())
@@ -1980,16 +2019,20 @@ continue." << std::endl;
             case Term::Event::Type::Key:
             {
                 Term::Key key(event);
+                proceed_to_test = true;
                 break;
             }
             default:
                 break;
             }
-            break;
         };
                 bool completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
-                    mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3);
+                    mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3,
+                    false); // The final 'false' argument sets
+                    // the 'allow_quitting' parameter to false,
+                    // thus preventing players from exiting
+                    // a test via Ctrl + C.
                 if (completed_test)
                 {
                     mp_test_counter++;
