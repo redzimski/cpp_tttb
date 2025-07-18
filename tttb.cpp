@@ -8,8 +8,8 @@ Link to project's GitHub page:
 https://github.com/kburchfiel/cpp_tttb
 
 Note: As with my other GitHub projects, I chose not to use 
-generative AI tools when writing, debugging,
-or adding documentation to this file. I wanted to learn how to 
+generative AI tools when creating Type Through the Bible. 
+I wanted to learn how to 
 perform these tasks in C++ (or in a C++ library) rather than
 simply learn how to get an AI tool to create them.
 
@@ -100,6 +100,7 @@ To dos (very incomplete list)!
 #include <vector>
 #include <utility>
 #include <numeric>
+#include <cstdlib>
 
 #include "csv.hpp"
 #include "cpp-terminal/terminal.hpp"
@@ -2056,6 +2057,8 @@ continue." << std::endl;
         {end_of_game = true;}
         player_wpm_pairs = calculate_wpms_by_player(player_names,
         mp_results_map, end_of_game);
+        // Consider adding code here that would allow players to 
+        // finish the game early. 
         }
     }
 
@@ -2105,6 +2108,32 @@ mp_pivot_export_end_time - mp_pivot_export_start_time)
     Term::cout << "Exported " << player_wpm_pairs.size() << 
 " mean WPM rows in " << multiplayer_export_seconds << " seconds." 
 << std::endl;
+
+// Attempting to call Python file for converting multiplayer
+// results into visualizations:
+// Note: You'll likely need to check whether the user is running
+// Windows (and possibly Mac), and if so, run a slightly different
+// command.
+// The following code was based on the examples shown at
+// https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
+
+// Defining a system call as a std::string:
+// The following code was based on
+// https://stackoverflow.com/a/4907852/13097194 
+
+std::string system_call = "python ../Visualizations\
+/mp_visualizations.py " + multiplayer_test_results_path;
+
+// Converting this string to a C-style string, then passing
+// it to system():
+
+try
+{system(system_call.c_str());
+}
+catch (...)
+{Term::cout << "Unable to run system command." << std::endl;}
+
+
 }
 
 int main()
@@ -2124,6 +2153,9 @@ can't catch user input. Exiting...");
     https://github.com/jupyter-xeus/cpp-terminal/blob/
     master/examples/events.cpp . */
 
+    std::string game_exit_message = "Exiting Type Through \
+the Bible.";
+
     char gameplay_option = '0';
     while (gameplay_option != 'e')
     {
@@ -2140,12 +2172,21 @@ mode, enter 'm'. To exit the game, press 'e.'"
         case 's':
         {
             run_single_player_game();
+            // Since I'm finding that the game isn't working
+            // correctly after system() calls, I'm having it
+            // exit after the conclusion of a game. If I find
+            // a solution to this issue, I can delete the following
+            // "gameplay_option == 'e' " entry.
+            gameplay_option = 'e';
+            Term::cout << game_exit_message << std::endl;
             continue;
         }
 
         case 'm':
         {
             run_multiplayer_game();
+            gameplay_option = 'e';
+            Term::cout << game_exit_message << std::endl;
             continue;
         }
 

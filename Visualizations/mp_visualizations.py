@@ -1,13 +1,27 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Visualization scripts for multiplayer Type Through the Bible files
+# ## Visualization script for multiplayer Type Through the Bible files
 # 
 # By Ken Burchfiel
 # 
 # Released under the MIT license
+# 
+# Note: this script, though developed as a Jupyter Notebook to make development and testing easier, is meant to be called as a Python file within a terminal/command prompt with a multiplayer test results file as its sole argument. Here's an example of what this function call may look like on Linux when the current directory is TTTB's build/ folder (more on this below):
+# 
+#     python ../Visualizations/mp_visualizations.py ../Files/Multiplayer/20250706T220148_string_test_results.csv
+# 
+# When players complete multiplayer games within Type Through The Bible, this script will then get called via a system() call. Because the TTTB program is stored within a separate build/ folder, I needed to adjust the file paths shown within this script *so that they would be relative to that build/ folder. 
+# 
+# (I also plan to add a check to this script that will determine whether the code is running in notebook form or .py form, then modify certain parameters and/or skip the argparse-related code accordingly.)
 
 # In[1]:
+
+
+'../Files/Multiplayer/20250706T220148_string_test_results.csv'[21:-17]
+
+
+# In[ ]:
 
 
 import time
@@ -16,15 +30,17 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
-mp_results_folder = '../Files/Multiplayer/'
-# os.listdir(mp_results_folder)
+
+mp_visualizations_folder = '../Visualizations/Multiplayer/'
 
 
 # Adding code that will allow the caller to specify which multiplayer results file to analyze:
 # 
 # (This file *must* end with "test_results.csv" in order for the code to work correctly.)
+# 
+# Note: this cell will *not* work within a Jupyter notebook.
 
-# In[8]:
+# In[ ]:
 
 
 # The following code was based on
@@ -37,22 +53,23 @@ args = parser.parse_args()
 test_results_file = args.filename
 
 
-# In[13]:
+# In[ ]:
 
 
 # If you're running this code within a notebook, skip over the previous
-# cell and then uncomment and run the following line:
+# cell, then uncomment and run the following line:
 # test_results_file = '20250706T220148_string_test_results.csv'
-test_results_name = test_results_file[0:-17] 
-# Removes the 'test_results.csv' component from the file so that
-# it can be more easily repurposed for chart filenames
+test_results_name = test_results_file[21:-17] 
+# Removes the 'test_results.csv' component from the file and 
+# the '../Files/Multiplayer/' prefix
+# it can be more easily repurposed for chart filenames .
 test_results_name
 
 
-# In[3]:
+# In[ ]:
 
 
-df = pd.read_csv(mp_results_folder+test_results_file)
+df = pd.read_csv(test_results_file) 
 # Replacing the tag columns with their actual meanings:
 df.rename(columns = {'Tag_1':'Round','Tag_2':'Test within round',
                      'Tag_3':'Game test number'}, inplace = True)
@@ -87,7 +104,7 @@ df.tail()
 # 
 # (This will make it easier to produce a graph that uses different line dash types to differentiate between cumulative and test-specific WPM values.)
 
-# In[4]:
+# In[ ]:
 
 
 df_wpm_type_melt = df.melt(id_vars = ['Player', 'Round_Test', 
@@ -104,7 +121,7 @@ df_wpm_type_melt['WPM Type'] = df_wpm_type_melt['WPM Type'].replace(
 df_wpm_type_melt
 
 
-# In[5]:
+# In[ ]:
 
 
 fig_wpm_by_player = px.line(df_wpm_type_melt, 
@@ -113,7 +130,8 @@ x = 'Player test number', y = 'WPM',
        title = 'WPM By Player and Test',
         color_discrete_sequence = px.colors.qualitative.Alphabet)
 fig_wpm_by_player.write_html(
-    f'Multiplayer/{test_results_name}_Mean_WPM_By_Player_And_Test.html',
+    f'{mp_visualizations_folder}{test_results_name}_Mean_WPM_By_\
+Player_And_Test.html',
     include_plotlyjs = 'cdn')
 # Note: 'Alphabet' is used here so that up to 26 distinct colors can be
 # shown within the chart (which will prove useful for multiplayer rounds
@@ -123,7 +141,7 @@ fig_wpm_by_player.write_html(
 
 # Calculating mean WPMs by player and round as well as overall WPMs:
 
-# In[6]:
+# In[ ]:
 
 
 df_mean_wpm_by_player_and_round = df.pivot_table(
@@ -148,7 +166,7 @@ df_mean_wpm_by_player_and_round['Round'] = (
 df_mean_wpm_by_player_and_round
 
 
-# In[7]:
+# In[ ]:
 
 
 fig_mean_wpm_by_player_and_round = px.bar(
@@ -158,12 +176,13 @@ fig_mean_wpm_by_player_and_round = px.bar(
     title = 'Mean WPM by Player and Round',
       text_auto = '.0f')
 fig_mean_wpm_by_player_and_round.write_html(
-    f'Multiplayer/{test_results_name}_Mean_WPM_By_Player_And_Round.html',
+    f'{mp_visualizations_folder}{test_results_name}_Mean_WPM_\
+By_Player_And_Round.html',
     include_plotlyjs = 'cdn')
 # fig_mean_wpm_by_player_and_round
 
 
-# In[8]:
+# In[ ]:
 
 
 df_wins = df.pivot_table(index = 'Player', values = 'Player had best \
@@ -173,7 +192,7 @@ df_wins.sort_values('Player had best WPM for this test', ascending = False,
 df_wins
 
 
-# In[9]:
+# In[ ]:
 
 
 fig_wins = px.bar(df_wins, x = 'Player', 
@@ -181,14 +200,14 @@ fig_wins = px.bar(df_wins, x = 'Player',
       title = 'Number of Tests in Which Each Player \
 Had the Highest WPM', text_auto = '.0f',
                  color = 'Player', 
-                 color_discrete_sequence=px.colors.qualitative.Alphabet).update_layout(
+color_discrete_sequence=px.colors.qualitative.Alphabet).update_layout(
 yaxis_title = 'Wins')
-fig_wins.write_html(f'Multiplayer/{test_results_name}_\
+fig_wins.write_html(f'{mp_visualizations_folder}{test_results_name}_\
 wins_by_player.html', include_plotlyjs = 'cdn')
 # fig_wins
 
 
-# In[10]:
+# In[ ]:
 
 
 df_highest_wpm = df.pivot_table(index = 'Player', values = 'WPM', 
@@ -197,7 +216,7 @@ df_highest_wpm.sort_values('WPM', ascending = False, inplace = True)
 df_highest_wpm
 
 
-# In[11]:
+# In[ ]:
 
 
 fig_highest_wpm = px.bar(df_highest_wpm, x = 'Player', 
@@ -207,12 +226,12 @@ fig_highest_wpm = px.bar(df_highest_wpm, x = 'Player',
                  color_discrete_sequence = 
 px.colors.qualitative.Alphabet)
 fig_highest_wpm.write_html(
-    f'Multiplayer/{test_results_name}_\
+    f'{mp_visualizations_folder}{test_results_name}_\
 highest_wpm_by_player.html', include_plotlyjs = 'cdn')
 # fig_highest_wpm
 
 
-# In[12]:
+# In[ ]:
 
 
 end_time = time.time()
