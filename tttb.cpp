@@ -59,21 +59,20 @@ To dos (very incomplete list)!
         files.) 
 
 
-    4. Think about ways to show and analyze stats (ideally using
-    C++, but perhaps via Python also--particularly via the
-    Dash-Pivottable library (at least for single-player mode).
-    You could use this library to show different metrics
-    (total races or total character typed by date, 
-    average WPM by month, WPM by race number, etc.). For 
-    multiplayer games, you could allow the user to select games
-    to visualize via a dropdown. For word-based results,
-    the pivottable option could work, except that you may also
-    want to limit the results to the first 50 or so options;
-    this would be a good candidate for a custom Dash table, then.
+    4. Continue working on stats code. In particular:
 
-    (You might also find that creating your own custom Dash page,
-    or series of pages, would be easier--since you'll also want
-    to incorporate things like rolling averages.)
+        a. Update single-player gameplay code so that it automatically
+        calls analysis file. (However, also give the player the 
+        option *not* to call this code in case they want to 
+        quit immediately.)
+
+        b. Update your single-player and multiplayer visualization
+        notebooks so that they can get run as standalone files.
+        This will require (1) checking whether the scripts are 
+        being run as notebooks and (2) updating various values/
+        parameters accordingly (especially for multiplayer
+        files).
+
 
     6. Update Readme with gameplay + compilation information.
 
@@ -1725,6 +1724,23 @@ from which to start this mode." << std::endl;
     export_word_results(wrrv, word_results_file_path,
     false, false);
 
+// Calculating single-player stats:
+
+// Attempting to call Python file for converting single-player
+// results into visualizations:
+// Note: You'll likely need to check whether the user is running
+// Windows (and possibly Mac), and if so, run a slightly different
+// command.
+// The following code was based on the examples shown at
+// https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
+
+try
+{system("python sp_visualizations.py");
+}
+catch (...)
+{Term::cout << "Unable to run system command." << std::endl;}
+
+
     Term::cout << "Quitting single-player gameplay session." 
     << std::endl;
 
@@ -1834,11 +1850,17 @@ entered, enter 'c'." << std::endl;
 
     std::string new_player_name;
 
-    while (new_player_name != "c")
+// The following while loop won't exit until (1) the player has 
+// entered "c" AND (2) at least two players have been entered.
+    while (!((new_player_name == "c") & (player_names.size() >= 2)))
     {
         Term::cin >> new_player_name;
         if (new_player_name == "c")
         {
+            if (player_names.size() < 2)
+            {
+            Term::cout << "Please enter at least \
+two player names." << std::endl;}
             continue;
         } // This check prevents 'c' from being added
         // as an additional player.
@@ -1890,6 +1912,12 @@ typing tests each player will perform each round."
 two integers doesn't exceed " << vrv.size() << "." << std::endl;
     continue;
         }
+        if ((multiplayer_rounds < 1) || (tests_per_round < 1))
+        {Term::cout << "Make sure to enter two \
+positive integers." << std::endl;
+    continue;
+        }
+        
             break;
         }
         catch (...)
@@ -1904,14 +1932,23 @@ With " << player_names.size() << " players, this game will \
 include " << multiplayer_rounds * player_names.size() * 
 tests_per_round << " tests in total." << std::endl;
 
-    Term::cout << "Next, choose a string to incorporate into the \
+    Term::cout << "Next, enter a tag to incorporate into the \
 filename that will store your game results. (This step is \
-optional.)" << std::endl;
+optional.) The tag should be 16 or fewer characters and should \
+not have any spaces." << std::endl;
 
     std::string multiplayer_filename_string;
 
     Term::cin >> multiplayer_filename_string;
 
+    if (multiplayer_filename_string.size() > 16)
+    // Keeping only 16 characters from this string (to prevent
+    // larger-than-desired filename lengths):
+        {
+            multiplayer_filename_string = (
+                multiplayer_filename_string.substr(
+                    0, 16));
+        }
 // Initializing filenames for test results, word results, and 
 // a pivot table that will store players' avearge WPMs;
 
@@ -2109,20 +2146,18 @@ mp_pivot_export_end_time - mp_pivot_export_start_time)
 " mean WPM rows in " << multiplayer_export_seconds << " seconds." 
 << std::endl;
 
-// Attempting to call Python file for converting multiplayer
-// results into visualizations:
-// Note: You'll likely need to check whether the user is running
-// Windows (and possibly Mac), and if so, run a slightly different
-// command.
-// The following code was based on the examples shown at
-// https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
 
 // Defining a system call as a std::string:
 // The following code was based on
 // https://stackoverflow.com/a/4907852/13097194 
 
-std::string system_call = "python ../Visualizations\
-/mp_visualizations.py " + multiplayer_test_results_path;
+std::string system_call = "python \
+mp_visualizations.py " + multiplayer_start_time_as_string;
+// For security purposes, only the timestamp (rather than
+// the user-provided string that makes up part of the filename)
+// will get passed to the following system() call. (The 
+// Python script will be able to locate the correct multiplayer
+// results file based on this timestamp alone.)
 
 // Converting this string to a C-style string, then passing
 // it to system():
@@ -2138,17 +2173,6 @@ catch (...)
 
 int main()
 {
-
-    // Initializing our terminal:
-    Term::terminal.setOptions(Term::Option::NoClearScreen,
-    Term::Option::NoSignalKeys, Term::Option::NoCursor,
-                              Term::Option::Raw);
-    if (!Term::is_stdin_a_tty())
-    {
-        throw Term::Exception(
-            "The terminal is not attached to a TTY and therefore \
-can't catch user input. Exiting...");
-    }
     /* The following code was based in part on
     https://github.com/jupyter-xeus/cpp-terminal/blob/
     master/examples/events.cpp . */
@@ -2159,6 +2183,19 @@ the Bible.";
     char gameplay_option = '0';
     while (gameplay_option != 'e')
     {
+    // Initializing our terminal:
+    // (I moved this code within the while loop so that the terminal
+    // can get reinstated following certain system() calls
+    // that print out Python-based output.)
+    Term::terminal.setOptions(Term::Option::NoClearScreen,
+    Term::Option::NoSignalKeys, Term::Option::NoCursor,
+                              Term::Option::Raw);
+    if (!Term::is_stdin_a_tty())
+    {
+        throw Term::Exception(
+            "The terminal is not attached to a TTY and therefore \
+can't catch user input. Exiting...");
+    }
 
         Term::cout << "Welcome to the C++ Edition of Type Through \
 the Bible! for single-player mode, enter 's'. For multiplayer \
@@ -2172,21 +2209,12 @@ mode, enter 'm'. To exit the game, press 'e.'"
         case 's':
         {
             run_single_player_game();
-            // Since I'm finding that the game isn't working
-            // correctly after system() calls, I'm having it
-            // exit after the conclusion of a game. If I find
-            // a solution to this issue, I can delete the following
-            // "gameplay_option == 'e' " entry.
-            gameplay_option = 'e';
-            Term::cout << game_exit_message << std::endl;
             continue;
         }
 
         case 'm':
         {
             run_multiplayer_game();
-            gameplay_option = 'e';
-            Term::cout << game_exit_message << std::endl;
             continue;
         }
 
