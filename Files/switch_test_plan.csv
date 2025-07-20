@@ -1,0 +1,19 @@
+Starting test #,Ending test #,Switch color,Notes
+1,10,Red,"1. The first 30 races should encompass 3 sets of 10 races, each of which starts with the color red, brown, or black. (Red should be followed by brown; brown by black; and black by red.)"
+11,20,Brown,"2. The next 30 races should use the reverse order of the first 30. (For instance, if the first 30 use red, black, and brown switches in that order, the next 30 should use brown, black, then red switches.)"
+21,30,Black,"3. The next starting set of 60 races should begin with the color that follows the starting color of the previous 60 races. (For instance, if the previous 60 races started with red switches, the next 60 should start with brown switches.)"
+31,40,Black,4. There should be at least 1 set of 60 races that begins with each of the three colors.
+41,50,Brown,"5. This set of 180 races can then be repeated, in the same order, for subsequent trials."
+51,60,Red,"(For first set of races on 2025-07-19) when I first used the brown switches, the left Alt key had a red switch. I changed this going forward, but it shouldn’t have affected the results very much, if at all."
+61,70,Brown,Sample tag 1 updates:
+71,80,Black,1_Cherry_Red
+81,90,Red,1_Cherry_Brown
+91,100,Red,1_Cherry_Black
+101,110,Black,"To save time, you can enter these lines from the main gameplay screen as follows: u 1_Cherry_Red y e"
+111,120,Brown,
+121,130,Black,
+131,140,Red,
+141,150,Brown,
+151,160,Brown,
+161,170,Red,
+171,180,Black,

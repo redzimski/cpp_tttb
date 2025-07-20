@@ -100,6 +100,7 @@ To dos (very incomplete list)!
 #include <utility>
 #include <numeric>
 #include <cstdlib>
+#include <random>
 
 #include "csv.hpp"
 #include "cpp-terminal/terminal.hpp"
@@ -266,10 +267,12 @@ type -1." << std::endl;
         {
             int id_response_as_int = std::stoi(id_response_as_str);
 
-            if (id_response_as_int == -1)
+            if (id_response_as_int == -1 || id_response_as_int == -2)
+            // Added in -2 to support random-verse selection within
+            // multiplayer games
             {
-                Term::cout << "Never mind, then!" << std::endl;
-                return -1;
+                //Term::cout << "Never mind, then!" << std::endl;
+                return id_response_as_int;
             }
 
             else if ((id_response_as_int >= 1) && (
@@ -420,6 +423,7 @@ of that test.
     https://github.com/jupyter-xeus/cpp-terminal/blob/
     master/examples/keys.cpp .*/
 
+
     // Calling gen_word_result_map() to create a map that contains
     // information about each word within the verse:
     // (This will prove useful when calculating word-level WPM data.)
@@ -457,6 +461,34 @@ of that test.
 
     Term::Cursor cursor{Term::cursor_position()};
 
+    Term::Screen term_size{Term::screen_size()};
+
+    // Clearing the console in order to prepare for the next test:
+    Term::cout << Term::clear_screen() << Term::terminal.clear() 
+        << Term::cursor_move(
+    1, 1);
+
+
+    // Determining where to position the cursor after each keypress:
+    // The best option here will be to position it at the leftmost
+    // column just under the verse. That way, we won't need to 
+    // resend the verse to the terminal before each keypress,
+    // but we'll also be able to easily account for multiple-line
+    // verses, backspaces, and other special cases.
+    // To figure out which row belongs just under the verse, we
+    // can divide the length of the verse minus one by 
+    // term_size.columns(), then add 2 to the result. (This value
+    // should always be an integer, since we're dividing one 
+    // integer by another; thus, the remainder of this division 
+    // operation will be dropped by default. Subtracting 1 from
+    // the length of the verse will prevent an extra row from
+    // getting added if the length of the verse is an exact multiple
+    // of the width of the terimnal.)
+
+    int starting_result_row = (verse_row.characters - 1) / (
+        term_size.columns()) + 2;
+
+
     if (marathon_mode == false) // The following prompt should be skipped
     // within marathon mode, thus allowing users to go directly
     // into the typing test.
@@ -484,14 +516,13 @@ of that test.
     // and Goran's AskUbuntu response at
     // https://askubuntu.com/a/473770/1685413 .
 
-        Term::cout << Term::clear_screen() << Term::terminal.clear() 
-        << Term::cursor_move(
-    1, 1) << verse_row.verse <<
+    
+
+        Term::cout << verse_row.verse <<
 "\n\nYour next verse to type (" << verse_row.verse_code 
 << ") is shown above. This verse is " << verse_row.characters
                    << " characters long.\nPress \
-the space bar to begin the typing test."
-                   << std::endl;
+the space bar to begin the typing test." << std::endl;
 
         // The following while statement allows the user to begin the
         // test immediately after pressing a key. This statement will also
@@ -521,7 +552,8 @@ the space bar to begin the typing test."
     // cursor_move(1,1) moves the cursor to the top left of the terminal.
     // Note that, for this to work, we need to pass
     // this function call to Term::cout (it doesn't do
-    // anything by itself). Note that passing it to Term::cout won't work.
+    // anything by itself). Also note that using std::cout in place
+    // of Term::cout wouldn't work.
     // The kilo.cpp example (available at
     // https://github.com/jupyter-xeus/cpp-terminal/blob/master/examples/kilo.cpp
     // and the cursor.cpp source code at
@@ -530,8 +562,27 @@ the space bar to begin the typing test."
     // I've also found that ending Term::cout lines with "\n" may
     // not work; instead, it may be necessary to use std::endl .
 
-    Term::cout << Term::cursor_move(1, 1) << Term::clear_screen() 
-    << Term::terminal.clear()  << verse_row.verse << std::endl;
+    // Term::cout << Term::cursor_move(1, 1) << Term::clear_screen() 
+    // << Term::terminal.clear()  << verse_row.verse << std::endl;
+
+    // Moving the cursor to the starting row for the player's response,
+    // then clearing out all text already on or beneath it:
+    // Note: \033[J is an 'erase in display' ANSI escape code
+    // that clears out all text following the cursor.
+    // (I used the ANSI escape code Wikipedia page at 
+    // https://en.wikipedia.org/wiki/ANSI_escape_code and the 
+    // Hello World! demo for cpp-terminal at
+    // https://en.wikipedia.org/wiki/ANSI_escape_code to figure
+    // out what to enter here. I don't think the cpp-terminal 
+    // library has a function for this code yet, but this approach
+    // works fine also.
+    // Also note that functions like 'cursor_move()' also make 
+    // use of escape codes; see 
+    // https://jupyter-xeus.github.io/cpp-terminal/cursor_8cpp_source.html
+    // for examples of the original codes underlying thsi and 
+    // related functions. 
+    Term::cout << Term::cursor_move(
+        starting_result_row, 1) << "\033[J" << std::endl;
 
     // Starting our timing clock:
     // (This code was based on p. 1010 of The C++ Programming Language,
@@ -751,26 +802,53 @@ word_map[latest_first_character_index].error_and_backspace_rate =
                     word_error_counter++;
                 }
             }
-            /* To print the output, we'll first clear the entire screen and
-            move the cursor back to the top left. Next, we'll print both
-            the original verse and the user's response so far. (This approach
-            greatly simplifies our code, as it prevents us from having to
-            handle challenges like multi-verse output and moving from one
-            line to another. It really is simpler to just clear the sceren
-            and start anew after each keystroke.
+            /* To print the output, we'll first move the cursor back 
+            to the starting row for the result, then clear all text
+            on and after that row. Next, we'll print the user's 
+            response so far. (This approach greatly simplifies our 
+            code, as if we tried to print just the most recent 
+            character, we could encounter issues when printing files 
+            of multiple lines or deleting one or more characters. 
+            It may seem 'wasteful' to print all the characters of 
+            the response anew each time, but it prevents us from
+            having to deal with various edge cases.
 
-            Also note that, in order to debug this output, you'll want to add
-            relevant variables (such as word_timing_note) after these items
-            rather than earlier in the loop--as Term::clear_screen() will erase
-            all other post-keypress output.*/
+            Note: an earlier version of this code moved the cursor 
+            to the top left of the terminal; cleared out all of
+            the content; and then rewrote both the full verse
+            and the user's response. However, this caused the player's
+            response to flicker within Gnome-Terminal on Linux
+            (but not Console or Hyper). Once I updated the code
+            to only print the response, not the verse, this issue 
+            went away.
+            */
 
-            Term::cout << Term::clear_screen() << 
-            Term::terminal.clear() << Term::cursor_move(
-                1, 1)
-                       << verse_row.verse << std::endl
-                       << Term::color_fg(print_color) << user_string
-                       << color_fg(Term::Color::Name::Default) 
-                       << std::endl;
+
+
+            Term::cout << Term::cursor_move(
+                starting_result_row, 1) << "\033[J" <<
+            Term::color_fg(print_color) << user_string <<
+            color_fg(Term::Color::Name::Default) << std::endl;
+
+
+            // Older variants of this code that are slightly less
+            // (or potentially much less) efficient:
+
+            // Term::cout << Term::cursor_move(
+            //     1, 1) << "\033[J" <<
+            // verse_row.verse << std::endl <<
+            // Term::color_fg(print_color) << user_string <<
+            // color_fg(Term::Color::Name::Default) << std::endl;
+
+
+            // Term::cout << Term::clear_screen() << 
+            // // Term::terminal.clear() <<
+            // Term::cursor_move(
+            //     1, 1)
+            //            << verse_row.verse << std::endl
+            //            << Term::color_fg(print_color) << user_string
+            //            << color_fg(Term::Color::Name::Default) 
+            //            << std::endl;
             break;
         }
         default:
@@ -1983,7 +2061,8 @@ multiplayer_rounds * tests_per_round) - 1; // Subtracting 1 here
     Term::cout << "Finally, enter the integer corresponding to the \
 verse ID at which you would like to begin the game. This can range \
 from 1 to " << vrv.size() - last_verse_offset << ". (Enter -1 to \
-cancel this multiplayer session.)" << std::endl;
+cancel this multiplayer session, and -2 to choose \
+randomly-selected verses.)" << std::endl;
 
     int starting_verse_index_to_type = select_verse_id(vrv,
     multiplayer_rounds * tests_per_round);
@@ -1991,6 +2070,28 @@ cancel this multiplayer session.)" << std::endl;
     if (starting_verse_index_to_type == -1)
     {Term::cout << "Cancelling multiplayer game." << std::endl;
     return;}
+
+    std::vector<int> random_verse_ids {};
+
+    if (starting_verse_index_to_type == -2) // In this case,
+    // players will receive randomly-selected verses to type.
+    {
+    // The following code for generating random numbers was based
+// on https://en.cppreference.com/w/cpp/numeric/random.html
+// and p. 588 of the 3rd edition of Programming: Principles and
+// and Practices Using C++ (3rd Edition).
+    
+    std::random_device rd;
+    std::default_random_engine dre(rd());
+    for (int i = 0; i < multiplayer_rounds * tests_per_round; i++)
+    {
+    random_verse_ids.push_back(std::uniform_int_distribution {
+        1, int(vrv.size())}(dre));
+    }
+
+    }
+
+
 
     // The following struct will facilitate the process of adding
     // relevant information (incuding player names) to our test
@@ -2013,6 +2114,8 @@ cancel this multiplayer session.)" << std::endl;
 
     int mp_test_counter = 1; // This counter will store the total number
     // of tests that have been completed so far.
+    int verse_index_to_type = 1; // This is just a placeholder value;
+    // the actual value will get selected prior to each test.
 
     for (int current_round = 1;
          current_round < (multiplayer_rounds + 1); current_round++)
@@ -2033,9 +2136,16 @@ cancel this multiplayer session.)" << std::endl;
                 // NOTE: you'll need to add code that accounts for
                 // cases in which this value exceeds the last verse
                 // index within our Bible .csv file.
-                int verse_index_to_type = (
+                if (starting_verse_index_to_type != -2)
+                {verse_index_to_type = (
 starting_verse_index_to_type + (current_round - 1) * (
-    tests_per_round) + (current_test_within_round - 1));
+    tests_per_round) + (current_test_within_round - 1));}
+                else 
+                {
+                verse_index_to_type = random_verse_ids[
+                    (current_round - 1) * (tests_per_round) + (
+                    current_test_within_round - 1)];
+                }
                 Term::cout << "Round: " << current_round
                            << " Player: " << mgcf.player
                            << " Test within round: " 
@@ -2198,9 +2308,8 @@ can't catch user input. Exiting...");
     }
 
         Term::cout << "Welcome to the C++ Edition of Type Through \
-the Bible! for single-player mode, enter 's'. For multiplayer \
-mode, enter 'm'. To exit the game, press 'e.'"
-                   << std::endl;
+the Bible! Enter 's' or 'm' for single-player or multiplayer mode, \
+respectively. To exit the game, press 'e.'" << std::endl;
 
         Term::cin >> gameplay_option;
         switch (gameplay_option)
