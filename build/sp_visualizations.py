@@ -30,6 +30,7 @@ sp_visualizations_folder = '../Visualizations/Single_Player/'
 
 
 df_tr = pd.read_csv('../Files/test_results.csv') # tr = 'test results'
+df_tr.rename(columns = {'Test_Number':'Test number'}, inplace = True)
 
 #Converting start/end timestamps to DateTime values:
 for col in ['Local_Test_Start_Time', 'Local_Test_End_Time']:
@@ -39,9 +40,6 @@ for col in ['Local_Test_Start_Time', 'Local_Test_End_Time']:
 # to create are accurate)
 df_tr = df_tr.sort_values(
     'Local_Test_Start_Time').reset_index(drop=True).copy()
-
-df_tr['Test number'] = df_tr.index + 1
-
 
 df_tr
 
@@ -133,14 +131,14 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 # for i in range(len(df_tr)):
 #     start_time = df_tr.iloc[i]['Unix_Test_Start_Time'].astype(
 #         'int64')
-
+    
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #         'characters_typed_in_next_hour')] = df_tr[(
 #         df_tr[
 #         'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #             'Unix_Test_End_Time'] 
 #         < (start_time + 3600))]['Characters'].sum()
-
+    
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #         'characters_typed_in_next_30_minutes')] = df_tr[(
 #         df_tr[
@@ -154,20 +152,20 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 #             'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #                 'Unix_Test_End_Time'] 
 #             < (start_time + 900))]['Characters'].sum()
-
+    
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #             'characters_typed_in_next_10_minutes')] = df_tr[(
 #             df_tr[
 #             'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #                 'Unix_Test_End_Time'] 
 #             < (start_time + 600))]['Characters'].sum()
-
+            
 
 
 # In[8]:
 
 
-df_tr
+# df_tr
 
 
 # ### WPM results by test:
@@ -222,7 +220,7 @@ by_Tag_1.html',
 #     y = col,
 #     title = 'Most ' + col,
 #     hover_data = ['Test number', 'Local_Test_Start_Time'])
-
+    
 #     fig_endurance.write_html('Single_Player/Endurance_Top_50_rolling_'+col.replace(
 #         ' ', '_')+'.html', 
 #     include_plotlyjs = 'cdn')
@@ -244,13 +242,13 @@ for time_category in ['Hour', '30-Minute Block', '15-Minute Block',
     aggfunc = 'sum').reset_index().sort_values(
     'Characters', ascending = False).reset_index(drop=True).head(50)
     df_endurance['Rank'] = (df_endurance.index + 1)
-
+    
     fig_endurance = px.bar(
     df_endurance, x = f'Unique {time_category}', 
     y = 'Characters',
     title = 'Most Characters Typed By ' + time_category,
     hover_data = 'Rank')
-
+    
     fig_endurance.write_html(
     f'{sp_visualizations_folder}Endurance_Top_50_\
 Clock_'+time_category.replace(' ', '_')+'.html', 
@@ -295,8 +293,94 @@ fig_top_dates_by_keypresses.write_html(
 # In[16]:
 
 
+## Calculating mean WPMs by test number:
+
+
+# In[17]:
+
+
+df_tr.head()
+
+
+# In[18]:
+
+
+df_mean_wpm_by_within_session_test_number = df_tr.pivot_table(
+    index = 'Within_Session_Test_Number',
+                  values = ['WPM', 'Test number'], 
+                  aggfunc = {'WPM':'mean', 
+                             'Test number':'count'}).reset_index().rename(
+    columns = {'Test number':'Number of tests'})
+df_mean_wpm_by_within_session_test_number
+
+
+# In[19]:
+
+
+fig_mean_wpm_by_within_session_test_number = px.line(
+    df_mean_wpm_by_within_session_test_number,
+    x = 'Within_Session_Test_Number', y = 'WPM',
+    title = 'Mean WPM by Within-Session Test Number',
+    hover_data = 'Number of tests').update_layout(
+    xaxis_title = 'Within-session test number')
+fig_mean_wpm_by_within_session_test_number.write_html(
+    f'{sp_visualizations_folder}/Mean_WPM_by_Within_Session_Test_Number.html', 
+    include_plotlyjs='cdn')
+fig_mean_wpm_by_within_session_test_number
+
+
+# In[20]:
+
+
+# Creating a string version of the test number field that will allow it
+# to get used as a color value for the following chart:
+# (I found that, when this value was passed as an integer, no lines
+# appeared within the chart.)
+df_tr['Test number as string'] = df_tr['Test number'].astype('str')
+
+
+# In[21]:
+
+
+df_tr.query(
+    "Within_Session_Test_Number.notna()").sort_values('Test number').copy()
+
+
+# In[22]:
+
+
+df_tr_for_wpm_by_session = df_tr.query("Within_Session_Test_Number.notna()").copy()
+df_tr_for_wpm_by_session['Within_Session_Test_Number'] = df_tr_for_wpm_by_session[
+'Within_Session_Test_Number'].astype('int')
+df_tr_for_wpm_by_session
+
+
+# Not sure why lines aren't appearing within the following chart; I'll need to debug this further.
+
+# In[23]:
+
+
+fig_wpm_by_session_num_comparison = px.line(df_tr_for_wpm_by_session,
+        x = 'Within_Session_Test_Number', y = 'WPM',
+       color = 'Test number as string').update_traces(
+    mode = 'markers+lines').update_layout(showlegend = False)
+fig_wpm_by_session_num_comparison.write_html(
+    f'{sp_visualizations_folder}/WPM_by_Within_Session_Test_Number.html', 
+    include_plotlyjs='cdn')
+fig_wpm_by_session_num_comparison
+
+
+# In[24]:
+
+
 end_time = time.time()
 run_time = end_time - start_time
 print(f"Finished calculating and visualizing single-player stats in \
 {round(run_time, 3)} seconds.")
+
+
+# In[ ]:
+
+
+
 

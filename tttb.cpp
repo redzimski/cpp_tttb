@@ -154,6 +154,10 @@ struct Verse_Row
 // that file.)
 struct Test_Result_Row
 {
+    long test_number; // Stores the total number of tests the player
+    // has completed so far.
+    int within_session_test_number; // Stores the total number of 
+    // tests completed by the player during the current session.
     long unix_test_start_time;
     std::string local_test_start_time;
     long unix_test_end_time;
@@ -178,7 +182,7 @@ struct Test_Result_Row
     // This struct will be expanded to include accuracy data,
     // the time the test was started and finished, and possibly other
     // items also.
-    int marathon_mode; // Stores whether or not marathon mode was
+    int marathon_mode; // Tracks whether or not marathon mode was
     // active during a test.
     // Entries for player info and other tags that the player
     // can use to store custom information (e.g. about
@@ -191,6 +195,7 @@ struct Test_Result_Row
     std::string tag_1 = "";
     std::string tag_2 = "";
     std::string tag_3 = "";
+    std::string notes = "";
 };
 
 // Defining a struct that can store word-level WPM information:
@@ -198,7 +203,19 @@ struct Test_Result_Row
 // individual words within tests.)
 
 struct Word_Result_Row
-{
+{   long test_number; // Storing this value within 
+    // Word_Result_Row will make it easier to link these results
+    // to their respective tests. (Indeed, this value will allow
+    // us to avoid having to store player names, tags, etc.
+    // within word results rows, as we can retrieve those by merging
+    // their respective test result columns into our word results
+    // table using test_number as a key.
+    long unix_test_start_time; // Added as a fallback merge 
+    // key in case, somehow,
+    // word-result and test-result test numbers get unsynced.
+    // (It's possible, but high unlikely, that two test results
+    // will have the same test start time; thus, the test_number
+    // value should still be the best merge key.
     std::string word = "";
     // Initializing certain variables as -1 or -1.0 will make it
     // easier to identify cases in which they weren't updated.
@@ -212,10 +229,6 @@ struct Word_Result_Row
     double test_seconds = -1.0;
     double error_rate = -1.0;
     double error_and_backspace_rate = -1.0;
-    std::string player = "";
-    std::string tag_1 = "";
-    std::string tag_2 = "";
-    std::string tag_3 = "";
 };
 
 // Defining a set of configuration settings that can be updated
@@ -227,6 +240,17 @@ struct Game_Config
     std::string tag_1 = "";
     std::string tag_2 = "";
     std::string tag_3 = "";
+    std::string notes = "";
+};
+
+// Defining a struct that will allow me to keep track of
+// the amount of time, in microseconds, the game needs to process
+// individual keypresses:
+struct Keypress_Processing_Time_Row
+{
+    long test_number;
+    int keypress_number;
+    long processing_time_in_microseconds;
 };
 
 int select_verse_id(const std::vector<Verse_Row> &vrv,
@@ -376,6 +400,8 @@ WPM data. */
             }
             // Creating a new Word_Result_Row object that can store
             // various attributes about this word:
+            // (Other attributes of this row will get filled in
+            // within run_test().)
             Word_Result_Row wr;
             wr.word = newword;
             wr.word_length = newword.size();
@@ -413,7 +439,9 @@ bool run_test(
     std::vector<Word_Result_Row> &wrrv, const bool &marathon_mode,
     const std::string &player, const std::string &tag_1,
     const std::string &tag_2, const std::string &tag_3,
-    const bool allow_quitting = true)
+    const std::string &notes, long& test_number, 
+    int& within_session_test_number, const bool allow_quitting,
+    std::vector<Keypress_Processing_Time_Row> &kptrv)
 /* This function allows the player to complete a single typing test.
 It then updates the verse_row, trrv, and wrrv vectors with the results
 of that test.
@@ -422,6 +450,20 @@ of that test.
     /* Some of the following code was based on the documentation at
     https://github.com/jupyter-xeus/cpp-terminal/blob/
     master/examples/keys.cpp .*/
+
+    int keypress_counter = 0; // Currently, this value is only
+    // being used to keep track of keypress processing times.
+
+    // Creating a Keypress Processing Time Row vector that will
+    // store results while a test is in progress:
+    // (Once the test is completed, additional information will
+    // get added to these tests, and they will then get stored
+    // within kptrv. This approach will allow the main
+    // keypress processing time vector to remain unmodified 
+    // until the test has been complete. (Otherwise, we might end
+    // up assigning incorrect test result names to keypresses
+    // in cases when players quit tests early.)
+    std::vector<Keypress_Processing_Time_Row> local_kptrv;
 
 
     // Calling gen_word_result_map() to create a map that contains
@@ -463,10 +505,10 @@ of that test.
 
     Term::Screen term_size{Term::screen_size()};
 
-    // Clearing the console in order to prepare for the next test:
+    // Clearing the console and displaying the verse to type:
     Term::cout << Term::clear_screen() << Term::terminal.clear() 
         << Term::cursor_move(
-    1, 1);
+    1, 1) << verse_row.verse << std::endl;
 
 
     // Determining where to position the cursor after each keypress:
@@ -518,9 +560,9 @@ of that test.
 
     
 
-        Term::cout << verse_row.verse <<
-"\n\nYour next verse to type (" << verse_row.verse_code 
-<< ") is shown above. This verse is " << verse_row.characters
+        Term::cout << "\nYour next verse to type (" << 
+        verse_row.verse_code 
+    << ") is shown above. This verse is " << verse_row.characters
                    << " characters long.\nPress \
 the space bar to begin the typing test." << std::endl;
 
@@ -627,10 +669,12 @@ the space bar to begin the typing test." << std::endl;
         case Term::Event::Type::Key:
         {
             Term::Key key(event);
+            keypress_counter++;
             // Creating a timer following this keypress:
             // (This will be useful for timing how long it took the user
             // to type each individual word.)
-            auto keypress_time = std::chrono::high_resolution_clock::now();
+            auto keypress_time = std::chrono::
+            high_resolution_clock::now();
 
             std::string char_to_add = ""; // This default setting will
             // be used in certain special keypress cases (including Backspace)
@@ -776,6 +820,14 @@ the space bar to begin the typing test." << std::endl;
 
                     // Storing these details within word_map: (We can use
                     // latest_first_character_index as a key here.)
+                    // Other elements of each word_row object that
+                    // don't need to be computed here (such as
+                    // test numbers)
+                    // will get added in after the test completes,
+                    // thus reducing the amount of 
+                    // processing time needed to keep track of 
+                    // word results within the race.
+
 word_map[latest_first_character_index].wpm = word_wpm;
 word_map[latest_first_character_index].test_seconds = word_seconds;
 word_map[latest_first_character_index].error_rate = word_error_rate;
@@ -829,6 +881,31 @@ word_map[latest_first_character_index].error_and_backspace_rate =
                 starting_result_row, 1) << "\033[J" <<
             Term::color_fg(print_color) << user_string <<
             color_fg(Term::Color::Name::Default) << std::endl;
+
+            auto processing_end_time = std::chrono::
+            high_resolution_clock::now();
+
+            // Seeing how long it took the code to process the 
+            // player's keypress:
+            // This code was based on the example found at
+            // https://en.cppreference.com/w/cpp/chrono/duration/duration_cast.html .
+            auto processing_microseconds = std::chrono::duration<
+            double, std::micro>(
+                processing_end_time - keypress_time).count();
+
+            // The following line shows the latest keypress 
+            // processing time value directly below the player's
+            // response. This data will also be availble for
+            // view within a local .csv file (as long as that code
+            // hasn't since been commented out).
+            // Term::cout << processing_microseconds << std::endl;
+
+            Keypress_Processing_Time_Row kptr;
+            kptr.keypress_number = keypress_counter;
+            kptr.processing_time_in_microseconds = (
+            processing_microseconds);
+            local_kptrv.push_back(kptr);
+                
 
 
             // Older variants of this code that are slightly less
@@ -938,7 +1015,10 @@ word_map[latest_first_character_index].error_and_backspace_rate =
                                     verse_row.characters));
 
     if (completed_test == true)
-    {
+    {// Incrementing our overall and within-session test counters:
+        test_number++;
+        within_session_test_number++;
+
         Term::cout << "You typed the " << verse_row.characters
                    << "-character verse \
 in " << test_seconds
@@ -962,21 +1042,36 @@ including backspaces)."
             /* Adding a new word result row to wrrv: (one row will be added
             for each word. */
             Word_Result_Row wrr;
+            wrr.test_number = test_number;
+            wrr.unix_test_start_time = unix_test_start_time_as_long;
             wrr.word = word_map_value.word;
             wrr.wpm = word_map_value.wpm;
             wrr.error_rate = word_map_value.error_rate;
             wrr.error_and_backspace_rate =
             word_map_value.error_and_backspace_rate;
-            wrr.player = player;
-            wrr.tag_1 = tag_1;
-            wrr.tag_2 = tag_2;
-            wrr.tag_3 = tag_3;
             wrrv.push_back(wrr);
         }
+
+        // Now that we've completed our test, we can add local
+        // keypress processing time to our main vector:
+        for (auto kptr: local_kptrv)
+        {
+        // Adding test_number attribute to kptr: 
+        // (We could have done this while the player was completing
+        // the test, but we would have had to increment it by 1
+        // since the value hadn't yet been updated to reflect
+        // the completed test.)
+        kptr.test_number = test_number;
+        kptrv.push_back(kptr);
+        }
+        
+
 
         /* Adding a new test result row to trrv: (only one row will
         be added for the entire test.) */
         Test_Result_Row trr;
+        trr.test_number = test_number;
+        trr.within_session_test_number = within_session_test_number;
         trr.unix_test_start_time = unix_test_start_time_as_long;
         trr.local_test_start_time = local_start_time_string;
         trr.unix_test_end_time = unix_test_end_time_as_long;
@@ -994,6 +1089,7 @@ including backspaces)."
         trr.tag_1 = tag_1;
         trr.tag_2 = tag_2;
         trr.tag_3 = tag_3;
+        trr.notes = notes;
         trrv.push_back(trr);
 
         // Incrementing the 'tests' value (and, if needed,
@@ -1026,17 +1122,20 @@ file. */
         Term::cout << "Please enter your desired game \
 configuration update. \
 This update should start with a 'p' for a Player update; a '1' \
-for a Tag_1 update; a '2' for a Tag_2 update; or a '3' for a \
-Tag_3 update. This character should be followed by an underscore, \
+for a Tag_1 update; a '2' for a Tag_2 update; a '3' for a \
+Tag_3 update; or an 'n' for a Notes update. This character should \
+be followed by an underscore, \
 then your desired new value for this configuration entry--which \
 cannot contain any whitespace. (If you wish \
-to make a given setting blank, enter only the initial code.) \
+to make a given setting blank, enter only the initial code, e.g. \
+'p' for Player or '2' for Tag_2.) \
 Once you have finished making your desired updates, enter 'e' to \
 return to the main gameplay menu.\nFor reference, here are your \
 current configuration settings:\nPlayer: '"
                    << gcf.player << "'\nTag_1: '" << gcf.tag_1 
                    << "'\nTag_2: '" << gcf.tag_2 << "'\nTag_3: '" 
-                   << gcf.tag_3 << "'" << std::endl;
+                   << gcf.tag_3 << "'\nNotes: '" << gcf.notes 
+                   << "'" << std::endl;
 
         Term::cin >> config_response;
         // Checking the value of config_response for debugging purposes:
@@ -1056,7 +1155,7 @@ current configuration settings:\nPlayer: '"
         char config_setting_code = config_response[0];
 
         // Making sure that a valid code was entered:
-        std::vector<char> valid_codes{'p', '1', '2', '3'};
+        std::vector<char> valid_codes{'p', '1', '2', '3', 'n'};
 
         if (std::find(valid_codes.begin(), valid_codes.end(),
                       config_setting_code) == valid_codes.end())
@@ -1067,7 +1166,7 @@ current configuration settings:\nPlayer: '"
         {
             Term::cout << "The configuration setting code \
 should be 'p', '1', \
-'2', or '3'. Please try again or enter 'e' to exit."
+'2', '3', or 'n.' Please try again or enter 'e' to exit."
                        << std::endl;
             continue;
         }
@@ -1079,7 +1178,8 @@ should be 'p', '1', \
             {'p', "Player"},
             {'1', "Tag_1"},
             {'2', "Tag_2"},
-            {'3', "Tag_3"}};
+            {'3', "Tag_3"},
+            {'n', "Notes"}};
 
         std::string new_config_value = "";
 
@@ -1093,7 +1193,7 @@ should be 'p', '1', \
                 2, config_response.size() - 2);
         }
 
-        // If this if statement returns fals, no value was provided, so
+        // If this if statement returns false, no value was provided, so
         // the default value for new_config_value will be retained.
 
         Term::cout << "Your requested new " << code_to_config_map[
@@ -1132,9 +1232,16 @@ enter 'y.' To try again, enter 'n.'" << std::endl;
         {
             gcf.tag_3 = new_config_value;
         }
+
+        else if (config_setting_code == 'n')
+        {
+            gcf.notes = new_config_value;
+        }        
         Term::cout << "Updated configuration setting." << std::endl;
     }
 }
+
+
 
 std::vector<Verse_Row> import_verses(
     const std::string& verses_file_path)
@@ -1252,6 +1359,8 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
     if (include_header_row == true)
     {
     std::vector<std::string> header_row = {
+        "Test_Number",
+        "Within_Session_Test_Number",
         "Unix_Test_Start_Time",
         "Local_Test_Start_Time",
         "Unix_Test_End_Time",
@@ -1268,9 +1377,8 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
         "Player",
         "Tag_1",
         "Tag_2",
-        "Tag_3"};
-
-    
+        "Tag_3",
+        "Notes"};
 
     // Writing this header to the .csv file:
     test_results_writer << header_row;
@@ -1280,6 +1388,8 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
     for (int i = 0; i < trrv.size(); ++i)
     {
         std::vector<std::string> cols_as_strings = {
+            std::to_string(trrv[i].test_number),
+            std::to_string(trrv[i].within_session_test_number),
             std::to_string(trrv[i].unix_test_start_time),
             trrv[i].local_test_start_time,
             std::to_string(trrv[i].unix_test_end_time),
@@ -1296,7 +1406,9 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
             trrv[i].player,
             trrv[i].tag_1,
             trrv[i].tag_2,
-            trrv[i].tag_3};
+            trrv[i].tag_3,
+            trrv[i].notes,
+            };
         test_results_writer << cols_as_strings;
     };
 
@@ -1333,15 +1445,12 @@ void export_word_results(const std::vector<Word_Result_Row> &wrrv,
 
 if (include_header_row == true)
     {std::vector<std::string> header_row = {
+        "Test_Number",
+        "Unix_Test_Start_Time",
         "Word",
         "WPM",
         "Error_Rate",
-        "Error_and_Backspace_Rate",
-        "Player",
-        "Tag_1",
-        "Tag_2",
-        "Tag_3"
-        };
+        "Error_and_Backspace_Rate"};
 
     // Writing this header to the .csv file:
     word_results_writer << header_row;
@@ -1350,14 +1459,12 @@ if (include_header_row == true)
     for (int i = 0; i < wrrv.size(); ++i)
     {
         std::vector<std::string> cols_as_strings = {
+            std::to_string(wrrv[i].test_number),
+            std::to_string(wrrv[i].unix_test_start_time),
             wrrv[i].word,
             std::to_string(wrrv[i].wpm),
             std::to_string(wrrv[i].error_rate),
-            std::to_string(wrrv[i].error_and_backspace_rate),
-            wrrv[i].player,
-            wrrv[i].tag_1,
-            wrrv[i].tag_2,
-            wrrv[i].tag_3};
+            std::to_string(wrrv[i].error_and_backspace_rate)};
         word_results_writer << cols_as_strings;
     };
 
@@ -1368,6 +1475,58 @@ if (include_header_row == true)
                                    .count();
     Term::cout << "Exported " << wrrv.size() << " word results in " 
     << wrrv_export_seconds << " seconds." << std::endl;   
+}
+
+
+void export_keypress_processing_times(
+    const std::vector<Keypress_Processing_Time_Row> &kptrv,
+    const std::string &keypress_processing_time_file_path,
+    bool include_header_row = false,
+    bool autosave_mode = false)
+// This function is similar to export_test_results except that it
+// saves keypress_processing_time-level rather than test-level results.
+{
+
+    auto kptrv_export_start_time = std::chrono::
+        high_resolution_clock::now();
+
+    std::ios_base::openmode write_mode = std::ios::app;
+
+    if (autosave_mode == true)
+        {write_mode = std::ios::trunc;}
+    
+    std::ofstream keypress_processing_time_results_ofstream{
+        keypress_processing_time_file_path, write_mode};
+    
+    auto keypress_processing_time_results_writer = make_csv_writer(
+        keypress_processing_time_results_ofstream);
+
+if (include_header_row == true)
+    {std::vector<std::string> header_row = {
+        "Test_Number",
+        "Keypress_Number",
+        "Processing_Time"};
+
+    // Writing this header to the .csv file:
+    keypress_processing_time_results_writer << header_row;
+    }
+
+    for (int i = 0; i < kptrv.size(); ++i)
+    {
+        std::vector<std::string> cols_as_strings = {
+            std::to_string(kptrv[i].test_number),
+            std::to_string(kptrv[i].keypress_number),
+            std::to_string(kptrv[i].processing_time_in_microseconds)};
+        keypress_processing_time_results_writer << cols_as_strings;
+    };
+
+    auto kptrv_export_end_time = std::chrono::
+        high_resolution_clock::now();
+    auto kptrv_export_seconds = std::chrono::duration<double>(
+    kptrv_export_end_time - kptrv_export_start_time).count();
+    Term::cout << "Exported " << kptrv.size() << " keypress \
+processing durations in " << kptrv_export_seconds << " seconds." 
+<< std::endl;   
 }
 
 
@@ -1448,6 +1607,31 @@ void export_verses(const std::vector<Verse_Row> &vrv,
 void run_single_player_game()
 {
 
+    // Seeing how many tests the player has completed:
+    // (This will allow us to determine the correct
+    // test_number value to assign to the tests that will get
+    // completed this session.
+    // (We could avoid this step by storing the number of tests
+    // in a separate text file, then updating it as needed,
+    // but there are a number of ways that number could get 
+    // unsynced from the actual number of races completed. Thus,
+    // this approach *should* be more reliable.
+    long test_number = 0;
+    CSVReader reader("../Files/test_results.csv");
+    // Iterating through our test results .csv file in order to 
+    // determine how many tests have already been completed and
+    // update our test_number accordingly:
+    // (test_number, along with within_session_test_number, 
+    // will get incremented following completed tests within
+    // run_test).
+    for (auto &row : reader)
+    {test_number++;}
+    Term::cout << test_number << " tests have been \
+completed so far." << std::endl;
+    int within_session_test_number = 0;
+
+
+
     // Importing Bible verses:
     // Note: it will be important to run this code at the start of
     // each game. If we only imported it at the very start of each
@@ -1471,6 +1655,9 @@ void run_single_player_game()
 
     std::vector<Test_Result_Row> trrv; // trrv is short for
     // 'Test result row vector.'
+    
+    std::vector<Keypress_Processing_Time_Row> kptrv; // kptrv is 
+    // short for 'Keypress processing time row vector.'
 
     std::string test_results_file_path = "../Files/test_results.csv";
     std::string autosaved_test_results_file_path = "../Files/\
@@ -1481,24 +1668,33 @@ autosaved_test_results.csv";
     // 'Word result row vector.'
 
     std::string word_results_file_path = "../Files/word_results.csv";
+    std::string keypress_processing_time_file_path = (
+        "../Files/keypress_processing_time.csv");
     std::string autosaved_word_results_file_path = "../Files/\
 autosaved_word_results.csv";
 
+
  
 
-    // Counting the number of unread verses so far:
+    // Counting the number of verses and characters the player
+    // has already typed:
 
     int earliest_untyped_verse_index = 40000; // This number will be
     // updated within the following for loop.
-
+    int typed_characters = 0;
+    double total_characters = 0; // Setting this as a double so that
+    // typed characters / all characters quotients will 
+    // themselves be doubles.
     int untyped_verses = 0;
     int typed_verses = 0;
     bool all_verses_typed = true; // This value will also be used
     // within our main gameplay loop to determine whether or not
     // the user has finished typing all verses at least once.
 
+    long characters_typed_during_current_session = 0;
+
     for (int i = 0; i < vrv.size(); ++i)
-    {
+    {total_characters += vrv[i].characters;
         if (vrv[i].tests == 0)
         {
             if (i < earliest_untyped_verse_index)
@@ -1516,22 +1712,28 @@ autosaved_word_results.csv";
         else
         {
             typed_verses++;
+            typed_characters += vrv[i].characters;
         }
     }
 
     if (untyped_verses != 0)
     {
-        Term::cout << typed_verses << " verses have been typed so far, \
-leaving " << untyped_verses
+        Term::cout << typed_verses << " unique Bible verses have \
+been typed so far, leaving " << untyped_verses
                    << " untyped. The earliest untyped \
 verse has the ID " << earliest_untyped_verse_index + 1
                    << "." << std::endl;
+    
+    Term::cout << typed_characters << " unique characters from the \
+Bible have been typed, which represents " << 100*(
+        typed_characters / total_characters) << " % of the Bible." 
+<< std::endl;
     }
 
     else
     {
         Term::cout << "All verses have been typed! Congratulations on \
-this momentous accomplishment!"
+this rare accomplishment!"
                    << std::endl;
     }
 
@@ -1562,14 +1764,15 @@ this momentous accomplishment!"
         gcf.tag_1 = row["Tag_1"].get<>();
         gcf.tag_2 = row["Tag_2"].get<>();
         gcf.tag_3 = row["Tag_3"].get<>();
+        gcf.notes = row["Notes"].get<>();
+
     }
 
     Term::cout << "Initial configuration settings: Player: '" 
     << gcf.player << "'\nTag_1: '" << gcf.tag_1 << "'\nTag_2: '" 
-    << gcf.tag_2 << "'\nTag_3: '" << gcf.tag_3 << "'\nYou can \
-update these \
-within the game as needed."
-               << std::endl;
+    << gcf.tag_2 << "'\nTag_3: '" << gcf.tag_3 << "'\nNotes: '" 
+    << gcf.notes << "'\nYou can update these \
+within the game as needed." << std::endl;
 
     std::string user_response = "";
     bool marathon_mode = false;
@@ -1598,32 +1801,36 @@ within the game as needed."
             double session_wpm_mean = 0;
             double last_10_wpm_mean = 0;
 
-            if (session_wpm_results.size() >= 2)
+
+            if (within_session_test_number >= 2)
             {
-                for (int i = 0; i < session_wpm_results.size(); ++i)
+                for (int i = 0; i < within_session_test_number; ++i)
                 {
                     session_wpm_sum += session_wpm_results[i];
                     // Checking whether at least 10 races have been completed
                     // thus far
-                    if (session_wpm_results.size() >= 10)
+                    if (within_session_test_number >= 10)
                     {
                         // Determining whether i is currently accessing one of the
                         // last 10 races completed by the user
-                        if (i >= (session_wpm_results.size() - 10))
+                        if (i >= (within_session_test_number - 10))
                         {
                             last_10_wpm_sum += session_wpm_results[i];
                         }
                     }
                 }
-                session_wpm_mean = session_wpm_sum / session_wpm_results.size();
+                session_wpm_mean = (session_wpm_sum / 
+                within_session_test_number);
                 last_10_wpm_mean = last_10_wpm_sum / 10;
-
-                Term::cout << "Your mean WPM over the " << session_wpm_results.size()
-                           << " races you have completed this session is "
-                           << session_wpm_mean << "." << std::endl;
+                Term::cout << "You have typed " << 
+            characters_typed_during_current_session << " characters \
+so far this session. Your mean WPM over the " 
+                << within_session_test_number
+                << " races you have completed this session is "
+                << session_wpm_mean << "." << std::endl;
             }
 
-            if (session_wpm_results.size() >= 10)
+            if (within_session_test_number >= 10)
             {
                 Term::cout << "Your mean WPM over your last 10 \
 races is " << last_10_wpm_mean << "." << std::endl;
@@ -1751,7 +1958,9 @@ from which to start this mode." << std::endl;
             // the function.
             bool completed_test = run_test(
                 vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
-                gcf.player, gcf.tag_1, gcf.tag_2, gcf.tag_3);
+                gcf.player, gcf.tag_1, gcf.tag_2, gcf.tag_3,
+                gcf.notes, test_number, within_session_test_number,
+                true, kptrv);
             // The following code will exit a user out of either marathon
             // mode if he/she did not complete the most recent test.
             if (completed_test == false)
@@ -1769,14 +1978,16 @@ from which to start this mode." << std::endl;
                 // WPM results:
 
                 session_wpm_results.push_back(trrv.back().wpm);
+                characters_typed_during_current_session += (
+                    trrv.back().characters);
             }
 
 
             // Every 10 races, the player's updated Bible verse file,
             // test-level results, and word-level results will be 
             // saved to autosave files.
-            if ((session_wpm_results.size() > 0) && (
-                session_wpm_results.size() % 10 == 0))
+            if ((within_session_test_number > 0) && (
+                within_session_test_number % 10 == 0))
             {
             Term::cout << "Performing autosave." << std::endl;
             export_verses(
@@ -1802,6 +2013,10 @@ from which to start this mode." << std::endl;
     export_word_results(wrrv, word_results_file_path,
     false, false);
 
+    export_keypress_processing_times(kptrv, 
+    keypress_processing_time_file_path, 
+    false, false);
+
 // Calculating single-player stats:
 
 // Attempting to call Python file for converting single-player
@@ -1817,7 +2032,6 @@ try
 }
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
-
 
     Term::cout << "Quitting single-player gameplay session." 
     << std::endl;
@@ -1889,6 +2103,11 @@ return std::move(player_wpm_pairs);
 
 void run_multiplayer_game()
 {
+
+    long test_number = 0; // Since there are no previous 
+    // tests to account for, we can initialize this value as 0.
+    int within_session_test_number = 0;
+
 
     // Determining the start time of this multiplayer session (which
     // will be incorporated into the name of the file that will store
@@ -2103,6 +2322,7 @@ randomly-selected verses.)" << std::endl;
 
     std::vector<Word_Result_Row> wrrv;
     std::vector<Test_Result_Row> trrv;
+    std::vector<Keypress_Processing_Time_Row> kptrv;
 
     std::map<std::string, std::vector<double>> mp_results_map;
     // Map that will be used to calculate players' average WPMs
@@ -2112,8 +2332,6 @@ randomly-selected verses.)" << std::endl;
     // that will keep track of each player's average WPM results
     // thus far.
 
-    int mp_test_counter = 1; // This counter will store the total number
-    // of tests that have been completed so far.
     int verse_index_to_type = 1; // This is just a placeholder value;
     // the actual value will get selected prior to each test.
 
@@ -2131,7 +2349,16 @@ randomly-selected verses.)" << std::endl;
                 mgcf.player = player_names[player_index];
                 mgcf.tag_1 = std::to_string(current_round);
                 mgcf.tag_2 = std::to_string(current_test_within_round);
-                mgcf.tag_3 = std::to_string(mp_test_counter);
+                // Tag 3 shows how many tests the current player
+                // has completed (including the current test).
+                mgcf.tag_3 = std::to_string((current_round - 1) * (
+                tests_per_round) + (current_test_within_round));
+                mgcf.notes = ""; // the 'notes' tag will remain blank 
+                // within multiplayer games, though you can always add
+                // content to this column within the .csv file
+                // after the fact.
+                
+
                 // Determining which verse to present:
                 // NOTE: you'll need to add code that accounts for
                 // cases in which this value exceeds the last verse
@@ -2177,13 +2404,14 @@ continue." << std::endl;
                 bool completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                     mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3,
-                    false); // The final 'false' argument sets
+                    mgcf.notes, test_number, 
+                    within_session_test_number, false, kptrv); 
+                    // The 'false' argument sets
                     // the 'allow_quitting' parameter to false,
                     // thus preventing players from exiting
                     // a test via Ctrl + C.
                 if (completed_test)
                 {
-                    mp_test_counter++;
                     // Storing the player's WPM result (which can be
                     // identified as the most recent WPM entry
                     // within trrv) within the WPM vector corresponding
