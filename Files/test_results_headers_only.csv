@@ -1,1 +1,1 @@
-Unix_Test_Start_Time,Local_Test_Start_Time,Unix_Test_End_Time,Local_Test_End_Time,Verse_ID,Verse_Code,Verse,Characters,WPM,Test_Seconds,Error_Rate,Error_and_Backspace_Rate,Marathon_Mode,Player,Tag_1,Tag_2,Tag_3
+Test_Number,Within_Session_Test_Number,Unix_Test_Start_Time,Local_Test_Start_Time,Unix_Test_End_Time,Local_Test_End_Time,Verse_ID,Verse_Code,Verse,Characters,WPM,Test_Seconds,Error_Rate,Error_and_Backspace_Rate,Marathon_Mode,Player,Mode,Tag_1,Tag_2,Tag_3,Notes

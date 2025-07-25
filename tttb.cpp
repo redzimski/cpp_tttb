@@ -42,13 +42,44 @@ Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
+    1. Give the player the option to import his/her portion of
+    a given multiplayer results file into his/her main single-player
+    word-level, test-level, and Bible verse .csv files. [This is a 
+    work in progress. Next, add in code that will allow word-level
+    results to get imported. This will require finding a way to keep
+    track of all original test_number values for the player whose
+    results you're importing, as you'll need to reference those
+    values when going through word-level results. You'll *also* 
+    want to map these test numbers (probably via a map!) to the 
+    within-session results values found in the multiplayer
+    test_results.csv file; that way, you'll be able to determine
+    what new test number to add to this file. Next, make sure that
+    your single-player code sorts files in chronological order (and
+    not test_number order) before running tests. Also make sure to
+    update the completed-test and best-WPM fields within
+    CPDB_for_TTTB.csv file with this new data.)
 
-    2. Update the game so that:
+    2. Create a new Python script that will convert multiple
+    individual multiplayer records (presumably completed within 
+    single-player mode, but not necessarily) into a single file that 
+    can then be analyzed by your main script. (This will allow 
+    multiple players to compete simultaneously--just on different 
+    devices.) Also add documentation that explains this step and 
+    provides suggested instructions for this game mode (e.g. using 
+    an online storage option or a local NAS hard drive to collect 
+    results from each player).
+
+    3. Replace terminal function calls with ANSI escape codes, which
+    may give you a minor performance advantage, then run some
+    practice tests to see what your processing time looks like.
+
+    4. See whehter temporarily hiding word-level results processing
+    decreases your average processing time.
 
 
-        c. Following a crash, you'll have the option to manually
-        rerun the function in part b to load your autosave results
-        to the new results. (You'll be able to detect a crash by 
+    5. Update the game so that, following a crash, you'll have the 
+        option to manually to load your autosave results
+        into your main results files. (You'll be able to detect a crash by 
         the presence of the autosave results files, provided that
         you delete these files after the normal end to a game.
         (Note: this is optional--as players can also simply
@@ -59,33 +90,22 @@ To dos (very incomplete list)!
         files.) 
 
 
-    4. Continue working on stats code. In particular:
+    6. Continue working on stats code. In particular:
 
-        a. Update single-player gameplay code so that it automatically
-        calls analysis file. (However, also give the player the 
-        option *not* to call this code in case they want to 
-        quit immediately.)
-
-        b. Update your single-player and multiplayer visualization
-        notebooks so that they can get run as standalone files.
-        This will require (1) checking whether the scripts are 
-        being run as notebooks and (2) updating various values/
-        parameters accordingly (especially for multiplayer
-        files).
+        a. Give players the option *not* to run stats code (in case
+        their computer setup doesn't support it yet.)
 
 
-    6. Update Readme with gameplay + compilation information.
+    7. Update Readme with gameplay + compilation information.
 
-    8. (Maybe) find a way to allow for spaces in tags. [Optional]
+    8. Add more documentation to this file as needed.
 
-    9. Add more documentation to this file as needed.
-
-    11. Create binaries within Linux, Windows, and Mac, then go
+    9. Create binaries within Linux, Windows, and Mac, then go
     ahead and publish your game on itch.io and publicize it within
     various relevant communities. You could even get an ad
     in the St. Thomas Aquinas bulletin for it!
 
-    12. Create a YouTube video that describes this project and 
+    10. Create a YouTube video that describes this project and 
     provides a gameplay example.
 
 */
@@ -192,6 +212,8 @@ struct Test_Result_Row
     // optional fields, there may not be any data entered for
     // them during the typing test.
     std::string player = "";
+    std::string mode = ""; // Can be either SP for single player
+    // or MP for multiplayer.
     std::string tag_1 = "";
     std::string tag_2 = "";
     std::string tag_3 = "";
@@ -241,6 +263,7 @@ struct Game_Config
     std::string tag_2 = "";
     std::string tag_3 = "";
     std::string notes = "";
+    std::string mode = "";
 };
 
 // Defining a struct that will allow me to keep track of
@@ -437,10 +460,11 @@ WPM data. */
 bool run_test(
     Verse_Row &verse_row, std::vector<Test_Result_Row> &trrv,
     std::vector<Word_Result_Row> &wrrv, const bool &marathon_mode,
-    const std::string &player, const std::string &tag_1,
-    const std::string &tag_2, const std::string &tag_3,
-    const std::string &notes, long& test_number, 
-    int& within_session_test_number, const bool allow_quitting,
+    const std::string &player, const std::string& mode, 
+    const std::string &tag_1, const std::string &tag_2, 
+    const std::string &tag_3, const std::string &notes, 
+    long& test_number, int& within_session_test_number, 
+    const bool allow_quitting,
     std::vector<Keypress_Processing_Time_Row> &kptrv)
 /* This function allows the player to complete a single typing test.
 It then updates the verse_row, trrv, and wrrv vectors with the results
@@ -1052,7 +1076,7 @@ including backspaces)."
             wrrv.push_back(wrr);
         }
 
-        // Now that we've completed our test, we can add local
+        // Now that we've completed our test, we can add the local
         // keypress processing time to our main vector:
         for (auto kptr: local_kptrv)
         {
@@ -1086,6 +1110,7 @@ including backspaces)."
         trr.error_and_backspace_rate = error_and_backspace_rate;
         trr.marathon_mode = marathon_mode;
         trr.player = player;
+        trr.mode = mode;
         trr.tag_1 = tag_1;
         trr.tag_2 = tag_2;
         trr.tag_3 = tag_3;
@@ -1107,6 +1132,46 @@ including backspaces)."
 
     return completed_test;
 }
+
+Game_Config initialize_game_config(std::string mode) {
+// This function allows you to use the game_config.csv file in the
+// Files folder to initialize a player's Game_Config settings.
+
+// mode: the value to store within the 'mode' argument of the 
+// configuration file.
+
+    Game_Config gcf;
+
+    std::string game_config_file_path = "../Files/game_config.csv";
+    CSVReader game_config_reader(game_config_file_path);
+    /* There should only be one row (not including the header row)
+    within game_config.csv. If additional rows were somehow
+    added, the final value for each row will be stored within gcf.
+    I imagine that there's a way to update the following code to
+    read only the first data row of the .csv file, but this approach
+    (the same one used for earlier .csv import processes) will
+    work for now. */
+
+    for (auto &row : game_config_reader)
+    {
+        gcf.player = row["Player"].get<>();
+        gcf.tag_1 = row["Tag_1"].get<>();
+        gcf.tag_2 = row["Tag_2"].get<>();
+        gcf.tag_3 = row["Tag_3"].get<>();
+        gcf.notes = row["Notes"].get<>();
+        gcf.mode = mode; // Can be SP for single player or
+        // MP for multiplayer.
+
+    }
+
+    Term::cout << "Initial configuration settings: Player: '" 
+    << gcf.player <<  "'\nMode: '" << gcf.mode << 
+    "'\nTag_1: '" << gcf.tag_1 << "'\nTag_2: '" 
+    << gcf.tag_2 << "'\nTag_3: '" << gcf.tag_3 << "'\nNotes: '" 
+    << gcf.notes << "'" << std::endl;
+    return std::move(gcf);
+}
+
 
 void update_game_config(Game_Config &gcf)
 /* This function allows the player to update game configuration
@@ -1305,6 +1370,53 @@ std::vector<Verse_Row> import_verses(
     return (std::move(vrv));
 }
 
+std::vector<Test_Result_Row> import_test_results(
+    std::string test_results_filename)
+// This function imports an existing set of test results. It is
+// currently being applied within the import_mp_results() function,
+// but it could also be applied to help add autosave data to
+// an existing set of test results.
+{
+    std::vector<Test_Result_Row> trrv;
+    CSVReader reader(test_results_filename);
+    for (auto &row : reader)
+    {   
+        Test_Result_Row trr;
+
+        trr.test_number = row["Test_Number"].get<long>();
+        trr.within_session_test_number = row[
+            "Within_Session_Test_Number"].get<int>();
+        trr.unix_test_start_time = row[
+            "Unix_Test_Start_Time"].get<long>();
+        trr.local_test_start_time = row[
+            "Local_Test_Start_Time"].get<>();
+        trr.unix_test_end_time = row[
+            "Unix_Test_End_Time"].get<long>();
+        trr.local_test_end_time = row["Local_Test_End_Time"].get<>();
+        trr.verse_id = row["Verse_ID"].get<int>();
+        trr.verse_code = row["Verse_Code"].get<std::string>();
+        trr.verse = row["Verse"].get<std::string>();
+        trr.characters = row["Characters"].get<int>();
+        trr.wpm = row["WPM"].get<double>();
+        trr.test_seconds = row["Test_Seconds"].get<double>();
+        trr.error_rate = row["Error_Rate"].get<double>();
+        trr.error_and_backspace_rate = row[
+            "Error_and_Backspace_Rate"].get<double>();
+        trr.marathon_mode = row["Marathon_Mode"].get<int>();
+        trr.player = row["Player"].get<std::string>();
+        trr.mode = row["Mode"].get<std::string>();
+        trr.tag_1 = row["Tag_1"].get<std::string>();
+        trr.tag_2 = row["Tag_2"].get<std::string>();
+        trr.tag_3 = row["Tag_3"].get<std::string>();
+        trr.notes = row["Notes"].get<std::string>();
+        trrv.push_back(trr);
+    }
+    return trrv;
+
+}
+
+
+
 void export_test_results(const std::vector<Test_Result_Row> &trrv,
                          const std::string &test_results_file_path,
                          bool include_header_row = false,
@@ -1375,6 +1487,7 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
         "Error_and_Backspace_Rate",
         "Marathon_Mode",
         "Player",
+        "Mode",
         "Tag_1",
         "Tag_2",
         "Tag_3",
@@ -1404,6 +1517,7 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
             std::to_string(trrv[i].error_and_backspace_rate),
             std::to_string(trrv[i].marathon_mode),
             trrv[i].player,
+            trrv[i].mode,
             trrv[i].tag_1,
             trrv[i].tag_2,
             trrv[i].tag_3,
@@ -1604,18 +1718,18 @@ void export_verses(const std::vector<Verse_Row> &vrv,
 }
 
 
-void run_single_player_game()
+long count_sp_test_results()
+// This function determines how many completed tests are present
+// within the single-player test results .csv file.
+// (This will allow us to determine the correct
+// test_number value to assign to the tests that will get
+// completed this session.
+// (We could avoid this step by storing the number of tests
+// in a separate text file, then updating it as needed,
+// but there are a number of ways that number could get 
+// unsynced from the actual number of races completed. Thus,
+// this approach *should* be more reliable.
 {
-
-    // Seeing how many tests the player has completed:
-    // (This will allow us to determine the correct
-    // test_number value to assign to the tests that will get
-    // completed this session.
-    // (We could avoid this step by storing the number of tests
-    // in a separate text file, then updating it as needed,
-    // but there are a number of ways that number could get 
-    // unsynced from the actual number of races completed. Thus,
-    // this approach *should* be more reliable.
     long test_number = 0;
     CSVReader reader("../Files/test_results.csv");
     // Iterating through our test results .csv file in order to 
@@ -1628,6 +1742,14 @@ void run_single_player_game()
     {test_number++;}
     Term::cout << test_number << " tests have been \
 completed so far." << std::endl;
+    return test_number;
+}
+
+
+void run_single_player_game()
+{
+
+    long test_number = count_sp_test_results();
     int within_session_test_number = 0;
 
 
@@ -1747,32 +1869,9 @@ this rare accomplishment!"
     // within config.csv:
     // (These settings can be updated within the game as needed.)
 
-    Game_Config gcf;
-    std::string game_config_file_path = "../Files/game_config.csv";
-    CSVReader game_config_reader(game_config_file_path);
-    /* There should only be one row (not including the header row)
-    within game_config.csv. If additional rows were somehow
-    added, the final value for each row will be stored within gcf.
-    I imagine that there's a way to update the following code to
-    read only the first data row of the .csv file, but this approach
-    (the same one used for earlier .csv import processes) will
-    work for now. */
 
-    for (auto &row : game_config_reader)
-    {
-        gcf.player = row["Player"].get<>();
-        gcf.tag_1 = row["Tag_1"].get<>();
-        gcf.tag_2 = row["Tag_2"].get<>();
-        gcf.tag_3 = row["Tag_3"].get<>();
-        gcf.notes = row["Notes"].get<>();
 
-    }
-
-    Term::cout << "Initial configuration settings: Player: '" 
-    << gcf.player << "'\nTag_1: '" << gcf.tag_1 << "'\nTag_2: '" 
-    << gcf.tag_2 << "'\nTag_3: '" << gcf.tag_3 << "'\nNotes: '" 
-    << gcf.notes << "'\nYou can update these \
-within the game as needed." << std::endl;
+    Game_Config gcf = initialize_game_config("SP");
 
     std::string user_response = "";
     bool marathon_mode = false;
@@ -1958,7 +2057,7 @@ from which to start this mode." << std::endl;
             // the function.
             bool completed_test = run_test(
                 vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
-                gcf.player, gcf.tag_1, gcf.tag_2, gcf.tag_3,
+                gcf.player, gcf.mode, gcf.tag_1, gcf.tag_2, gcf.tag_3,
                 gcf.notes, test_number, within_session_test_number,
                 true, kptrv);
             // The following code will exit a user out of either marathon
@@ -2149,15 +2248,15 @@ entered, enter 'c'." << std::endl;
 
 // The following while loop won't exit until (1) the player has 
 // entered "c" AND (2) at least two players have been entered.
-    while (!((new_player_name == "c") & (player_names.size() >= 2)))
+    while (!((new_player_name == "c") & (player_names.size() >= 1)))
     {
         Term::cin >> new_player_name;
         if (new_player_name == "c")
         {
-            if (player_names.size() < 2)
+            if (player_names.size() < 1)
             {
             Term::cout << "Please enter at least \
-two player names." << std::endl;}
+one player name." << std::endl;}
             continue;
         } // This check prevents 'c' from being added
         // as an additional player.
@@ -2357,12 +2456,14 @@ randomly-selected verses.)" << std::endl;
                 // within multiplayer games, though you can always add
                 // content to this column within the .csv file
                 // after the fact.
+                mgcf.mode = "MP"; // MP stands for 'multiplayer.'
+                // If these results get added to a player's main
+                // results file, it will be helpful to be able to
+                // differentiate these tests from his/her 
+                // tests in single-player mode.
                 
 
                 // Determining which verse to present:
-                // NOTE: you'll need to add code that accounts for
-                // cases in which this value exceeds the last verse
-                // index within our Bible .csv file.
                 if (starting_verse_index_to_type != -2)
                 {verse_index_to_type = (
 starting_verse_index_to_type + (current_round - 1) * (
@@ -2373,9 +2474,10 @@ starting_verse_index_to_type + (current_round - 1) * (
                     (current_round - 1) * (tests_per_round) + (
                     current_test_within_round - 1)];
                 }
-                Term::cout << "Round: " << current_round
-                           << " Player: " << mgcf.player
-                           << " Test within round: " 
+                Term::cout << "Here are the details for the \
+following test:\nRound: " << current_round
+                           << "\nPlayer: " << mgcf.player
+                           << "\nTest within round: " 
                            << current_test_within_round
                            << std::endl;
     // The following keypress prompt was added in so that players
@@ -2384,7 +2486,7 @@ starting_verse_index_to_type + (current_round - 1) * (
     // clears the screen, so without this prompt, players wouldn't
     // have a chance to see this information.)
                 Term::cout << "Press the space bar to \
-continue." << std::endl;
+continue. (The test won't start just yet.)" << std::endl;
     bool proceed_to_test = false;
     while (proceed_to_test == false)
         {
@@ -2403,8 +2505,8 @@ continue." << std::endl;
         };
                 bool completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
-                    mgcf.player, mgcf.tag_1, mgcf.tag_2, mgcf.tag_3,
-                    mgcf.notes, test_number, 
+                    mgcf.player, mgcf.mode, mgcf.tag_1, mgcf.tag_2, 
+                    mgcf.tag_3, mgcf.notes, test_number, 
                     within_session_test_number, false, kptrv); 
                     // The 'false' argument sets
                     // the 'allow_quitting' parameter to false,
@@ -2506,8 +2608,164 @@ try
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
 
+}
+
+
+void import_mp_results()
+{
+    Term::cout << "This option will allow you to import your portion \
+of a multiplayer results file into your main single-player results \
+(i.e. the ones stored in your Files/ folder.\nFirst, enter the name \
+of the multiplayer file timestamp and string whose data you wish \
+to import. These items can be found within your main multiplayer \
+test results file. For instance, if your full multiplayer test \
+results filename is 20250723T224940_testmpspimport_test_results.csv, \
+enter just 20250723T224940_testmpspimport ." << std::endl; 
+
+std::string mp_timestamp_and_tag;
+
+Term::cin >> mp_timestamp_and_tag;
+
+Term::cout << "Next, enter the EXACT name of the player, as shown \
+within the multiplayer results file, whose results you wish to \
+import into your main single-player file." << std::endl;
+
+std::string player_to_import;
+
+Term::cin >> player_to_import;
+
+std::string mp_test_results_filename = (
+"../Files/Multiplayer/"+mp_timestamp_and_tag + "_test_results.csv");
+
+// Reading multiplayer test results into memory:
+
+// Checking how many test results have been completed so far:
+// (We'll need this information in order to determine what new
+// test numbers to assign our files. Also note that, depending on
+// when this function was called, these test numbers might be 
+// greater than those of earlier single-player tests.)
+
+long test_number = count_sp_test_results();
+
+// For debugging purposes
+// Term::cout << test_number << " tests have been completed so far." 
+// << std::endl;
+
+std::vector<Test_Result_Row> original_mp_trrv = import_test_results(
+    mp_test_results_filename);
+
+Term::cout << "Finished importing multiplayer test result data \
+from:\n" << mp_test_results_filename << std::endl;
+
+// Loading game configuration settings: (These will override the
+// existing Player, Mode, Tag_1, Tag_2, Tag_3, and Notes values within
+// the multiplayer results file.
+
+Game_Config new_gcf = initialize_game_config("MP");
+
+Term::cout << "The existing tags and player values in the \
+multiplayer results file will get overwritten with these values. \
+To update these values before they get saved to your single-player \
+file, enter 'y'; to keep them as they are, enter 'n.'" << std::endl;
+
+std::string config_update_request;
+
+Term::cin >> config_update_request;
+
+if (config_update_request == "y")
+
+{
+    update_game_config(new_gcf);
+}
+
+Term::cout << "Data for " << player_to_import << " will now be \
+added to your main test results files under the name " << 
+new_gcf.player << ". Enter 'y' to proceed or \
+'n' to cancel." << std::endl;
+
+std::string import_confirmation;
+
+Term::cin >> import_confirmation;
+
+if (import_confirmation == "y")
+{
+// Creating a variant of mp_trrv that will include only the rows
+// whose Player values are equal to player_to_import (and whose
+// tag values will equal those requested by the player):
+
+std::vector<Test_Result_Row> mp_trrv_for_import;
+
+for (auto trr: original_mp_trrv)
+{
+    if (trr.player == player_to_import) // We'll only want to add
+    // rows for the player found in player_to_import to our
+    // single-player results file--hence this check.
+    {   Test_Result_Row trr_for_import = trr;
+        // Updating the player name to match that within new_gcf:
+        trr_for_import.player = new_gcf.player;
+        // Note that the 'Mode' value will remain multiplayer (since
+        // these tests were originally completed within a
+        // multiplayer game.)
+
+        // Updating the test numbers and within-session test numbers
+        // to align with those found in the single-player results
+        // file:
+        // Note: within multiplayer files, Tag_3 represents the
+        // number of tests (including the current test) the player
+        // has completed thus far; thus, it can be used as
+        // the within-session test number. In addition, to calculate 
+        // the overall test number, we can simply add this Tag_3 
+        // value to the test_number value generated using
+        // count_sp_test_results().
+
+        trr_for_import.test_number = (
+            test_number + std::stoi(trr_for_import.tag_3));
+        trr_for_import.within_session_test_number = std::stoi(
+            trr_for_import.tag_3);
+        // Now that we've utilized this tag_3 value, we can 
+        // overwrite it (along with the other tags) with the values
+        // found within new_gcf.
+        trr_for_import.player = new_gcf.player;
+        trr_for_import.tag_1 = new_gcf.tag_1;
+        trr_for_import.tag_2 = new_gcf.tag_2;
+        trr_for_import.tag_3 = new_gcf.tag_3;
+        trr_for_import.notes = new_gcf.notes;
+
+        // For debugging
+        Term::cout << "Updated values + WPM:" << 
+        trr_for_import.test_number << "\t" << 
+        trr_for_import.within_session_test_number << "\t" <<
+        trr_for_import.wpm << "\t" <<
+        trr_for_import.verse_code << "\t" <<
+        trr_for_import.player << "\t" <<
+        trr_for_import.tag_1 << "\t" <<
+        trr_for_import.tag_2 << "\t" <<
+        trr_for_import.tag_3 << "\t" <<
+        trr_for_import.notes << "\t" << std::endl;
+
+        mp_trrv_for_import.push_back(trr_for_import);
+    }
 
 }
+
+export_test_results(mp_trrv_for_import,
+"../Files/test_results.csv", false, false);
+
+Term::cout << "A revised copy of your multiplayer data was \
+added to test_results.csv." << std::endl;
+}
+
+else 
+{Term::cout << "Import canceled. Your single-player files were \
+not modified." << std::endl;
+}
+
+// 
+
+
+}
+
+
 
 int main()
 {
@@ -2537,7 +2795,8 @@ can't catch user input. Exiting...");
 
         Term::cout << "Welcome to the C++ Edition of Type Through \
 the Bible! Enter 's' or 'm' for single-player or multiplayer mode, \
-respectively. To exit the game, press 'e.'" << std::endl;
+respectively. To import multiplayer results into your single-player \
+files, enter 'r.'\nTo exit the game, press 'e.'" << std::endl;
 
         Term::cin >> gameplay_option;
         switch (gameplay_option)
@@ -2559,6 +2818,12 @@ respectively. To exit the game, press 'e.'" << std::endl;
         {
             Term::cout << "Exiting Type Through the Bible." 
             << std::endl;
+            continue;
+        }
+    
+        case 'r':
+        {
+            import_mp_results();
             continue;
         }
 
