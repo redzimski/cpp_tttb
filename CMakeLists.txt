@@ -3,6 +3,7 @@
 # Note: some of the module-related code was based on the documentation at:
 # https://www.kitware.com/import-cmake-the-experiment-is-over/
 # Also note that GNinja must be specified (e.g. by running cmake -GNinja .. rather than cmake ..)
+# Example:
 # CXX=g++-14 CC=gcc-14 cmake -GNinja ..
 # Optionfor g++-15 and gcc-15 (which I installed manually):
 # CXX=/opt/gcc-15/bin/g++ CC=/opt/gcc-15/bin/gcc cmake -GNinja ..

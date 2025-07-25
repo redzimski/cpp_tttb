@@ -38,36 +38,45 @@ calls with Term::cin and Term::cout, respectively.
 std::endl at the end of Term::cout statements rather than '\n';
 otherwise, output may not appear.
 
+3. References to 'PPP3' refer to the 3rd Edition of
+// Programming: Principles and Practice Using C++
+// by Bjarne Stroustrup.
+
 Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
-    1. Give the player the option to import his/her portion of
-    a given multiplayer results file into his/her main single-player
-    word-level, test-level, and Bible verse .csv files. [This is a 
-    work in progress. Next, add in code that will allow word-level
-    results to get imported. This will require finding a way to keep
-    track of all original test_number values for the player whose
-    results you're importing, as you'll need to reference those
-    values when going through word-level results. You'll *also* 
-    want to map these test numbers (probably via a map!) to the 
-    within-session results values found in the multiplayer
-    test_results.csv file; that way, you'll be able to determine
-    what new test number to add to this file. Next, make sure that
-    your single-player code sorts files in chronological order (and
-    not test_number order) before running tests. Also make sure to
-    update the completed-test and best-WPM fields within
-    CPDB_for_TTTB.csv file with this new data.)
+    1. IMPORTANT: Update count_sp_test_results so that the 
+    test number that it produces is equal to the *highest* test
+    number value found within that file. (This will prevent 
+    duplicate test number values from appearing; this issue could
+    arise if you deleted test results from a central region within
+    your test results file, as then the count of all results might
+    be lower than some of the numbers.)
 
     2. Create a new Python script that will convert multiple
     individual multiplayer records (presumably completed within 
     single-player mode, but not necessarily) into a single file that 
     can then be analyzed by your main script. (This will allow 
     multiple players to compete simultaneously--just on different 
-    devices.) Also add documentation that explains this step and 
+    devices.) Make sure that this script is also compatible with
+    multiplayer files that contain multiple players.
+    To work on this script, you'll need a set of files that all
+    contain the same set of results; two or more should be 
+    single-player results; one or more should be a multiplayer
+    results file with a single player's score; and one or more
+    should be a multiplayer results file that has scores from
+    two or more players.
+    
+    Also add documentation that explains this step and 
     provides suggested instructions for this game mode (e.g. using 
     an online storage option or a local NAS hard drive to collect 
     results from each player).
+    Make sure that this script (1) only retains results that come
+    from the same set of tests as the first result (or a specified
+    one) and (2) can correctly process two or more files with the
+    exact same name for a player (e.g. by renaming them).
+
 
     3. Replace terminal function calls with ANSI escape codes, which
     may give you a minor performance advantage, then run some
@@ -87,13 +96,19 @@ To dos (very incomplete list)!
         you might want to suggest that they do so using LibreOffice
         calc in order to ensure that Excel doesn't make unwanted
         modifications to the timestamps contained within those
-        files.) 
+        files.) Note: now that you've created code for importing
+        multiplayer results into single-player results, creating
+        a partially-automated autosave process should be quite
+        straightforward.
 
 
     6. Continue working on stats code. In particular:
 
         a. Give players the option *not* to run stats code (in case
         their computer setup doesn't support it yet.)
+
+        b. Add in accuracy-related stats, such as change in WPM
+        results over time for specific accuracy ranges.
 
 
     7. Update Readme with gameplay + compilation information.
@@ -1371,7 +1386,7 @@ std::vector<Verse_Row> import_verses(
 }
 
 std::vector<Test_Result_Row> import_test_results(
-    std::string test_results_filename)
+    std::string& test_results_filename)
 // This function imports an existing set of test results. It is
 // currently being applied within the import_mp_results() function,
 // but it could also be applied to help add autosave data to
@@ -1411,9 +1426,33 @@ std::vector<Test_Result_Row> import_test_results(
         trr.notes = row["Notes"].get<std::string>();
         trrv.push_back(trr);
     }
-    return trrv;
+    return std::move(trrv);
 
 }
+
+std::vector<Word_Result_Row> import_word_results(
+    std::string& word_results_filename)
+// This function imports an existing set of word-level results. 
+{
+    std::vector<Word_Result_Row> wrrv;
+    CSVReader reader(word_results_filename);
+    for (auto &row : reader)
+    {   
+        Word_Result_Row wrr;
+
+        wrr.test_number = row["Test_Number"].get<long>();
+        wrr.unix_test_start_time = row[
+            "Unix_Test_Start_Time"].get<long>();
+        wrr.word = row["Word"].get<std::string>();
+        wrr.wpm = row["WPM"].get<double>();
+        wrr.error_rate = row["Error_Rate"].get<double>();
+        wrr.error_and_backspace_rate = row[
+            "Error_and_Backspace_Rate"].get<double>();
+        wrrv.push_back(wrr);
+    }
+    return std::move(wrrv);
+}
+
 
 
 
@@ -2634,8 +2673,14 @@ std::string player_to_import;
 
 Term::cin >> player_to_import;
 
+// Identifying the files from which we will import multiplayer
+// results:
+
 std::string mp_test_results_filename = (
 "../Files/Multiplayer/"+mp_timestamp_and_tag + "_test_results.csv");
+
+std::string mp_word_results_filename = (
+"../Files/Multiplayer/"+mp_timestamp_and_tag + "_word_results.csv");
 
 // Reading multiplayer test results into memory:
 
@@ -2657,6 +2702,11 @@ std::vector<Test_Result_Row> original_mp_trrv = import_test_results(
 Term::cout << "Finished importing multiplayer test result data \
 from:\n" << mp_test_results_filename << std::endl;
 
+// Loading Bible verse data: (This file will get updated with the 
+// player's multiplayer results.)
+
+std::vector<Verse_Row> vrv = import_verses(verses_file_path);
+
 // Loading game configuration settings: (These will override the
 // existing Player, Mode, Tag_1, Tag_2, Tag_3, and Notes values within
 // the multiplayer results file.
@@ -2666,7 +2716,7 @@ Game_Config new_gcf = initialize_game_config("MP");
 Term::cout << "The existing tags and player values in the \
 multiplayer results file will get overwritten with these values. \
 To update these values before they get saved to your single-player \
-file, enter 'y'; to keep them as they are, enter 'n.'" << std::endl;
+file, enter 'y'; to keep them as they are, enter 'n'." << std::endl;
 
 std::string config_update_request;
 
@@ -2689,18 +2739,47 @@ Term::cin >> import_confirmation;
 
 if (import_confirmation == "y")
 {
+
 // Creating a variant of mp_trrv that will include only the rows
 // whose Player values are equal to player_to_import (and whose
 // tag values will equal those requested by the player):
+// (Results from this vector will get added to our single-player
+// test_results.csv file.)
 
 std::vector<Test_Result_Row> mp_trrv_for_import;
+
+// The following map will store original multiplayer test numbers
+// (not within-session test numbers) as keys and their corresponding
+// single-player test numbers as values. This will allow us to
+// determine (1) which word-level results to add to 
+// our single-player word results, and (2) which test number values
+// to assign those word-level results.
+std::map<long, long> mp_to_sp_test_number_map;
+
 
 for (auto trr: original_mp_trrv)
 {
     if (trr.player == player_to_import) // We'll only want to add
     // rows for the player found in player_to_import to our
     // single-player results file--hence this check.
+    // Creating a copy of trr that we can update to better align
+    // with our single-player results:
     {   Test_Result_Row trr_for_import = trr;
+        // Storing the single-player test number that corresponds
+        // to the original multiplayer test number value:
+        // Note: within multiplayer files, Tag_3 represents the
+        // number of tests (including the current test) the player
+        // has completed thus far; thus, it can be used as
+        // the within-session test number. In addition, to calculate 
+        // the overall test number, we can simply add this Tag_3 
+        // value to the test_number value generated using
+        // count_sp_test_results().
+
+
+        mp_to_sp_test_number_map[trr_for_import.test_number] = (
+            test_number + std::stoi(trr_for_import.tag_3));
+
+
         // Updating the player name to match that within new_gcf:
         trr_for_import.player = new_gcf.player;
         // Note that the 'Mode' value will remain multiplayer (since
@@ -2710,13 +2789,7 @@ for (auto trr: original_mp_trrv)
         // Updating the test numbers and within-session test numbers
         // to align with those found in the single-player results
         // file:
-        // Note: within multiplayer files, Tag_3 represents the
-        // number of tests (including the current test) the player
-        // has completed thus far; thus, it can be used as
-        // the within-session test number. In addition, to calculate 
-        // the overall test number, we can simply add this Tag_3 
-        // value to the test_number value generated using
-        // count_sp_test_results().
+ 
 
         trr_for_import.test_number = (
             test_number + std::stoi(trr_for_import.tag_3));
@@ -2732,18 +2805,32 @@ for (auto trr: original_mp_trrv)
         trr_for_import.notes = new_gcf.notes;
 
         // For debugging
-        Term::cout << "Updated values + WPM:" << 
-        trr_for_import.test_number << "\t" << 
-        trr_for_import.within_session_test_number << "\t" <<
-        trr_for_import.wpm << "\t" <<
-        trr_for_import.verse_code << "\t" <<
-        trr_for_import.player << "\t" <<
-        trr_for_import.tag_1 << "\t" <<
-        trr_for_import.tag_2 << "\t" <<
-        trr_for_import.tag_3 << "\t" <<
-        trr_for_import.notes << "\t" << std::endl;
+        // Term::cout << "Updated values + WPM:" << 
+        // trr_for_import.test_number << "\t" << 
+        // trr_for_import.within_session_test_number << "\t" <<
+        // trr_for_import.wpm << "\t" <<
+        // trr_for_import.verse_code << "\t" <<
+        // trr_for_import.player << "\t" <<
+        // trr_for_import.tag_1 << "\t" <<
+        // trr_for_import.tag_2 << "\t" <<
+        // trr_for_import.tag_3 << "\t" <<
+        // trr_for_import.notes << "\t" << std::endl;
 
         mp_trrv_for_import.push_back(trr_for_import);
+
+        // Updating Bible verse file to reflect this test:
+        // (As a reminder, verse indices are always one less
+        // than verse IDs, as the former start at 0 and the 
+        // latter start at 1.
+    
+        vrv[trr_for_import.verse_id - 1].tests += 1;
+        if (trr_for_import.wpm > vrv[
+            trr_for_import.verse_id - 1].best_wpm)
+        {
+        vrv[trr_for_import.verse_id - 1].best_wpm = (
+            trr_for_import.wpm);
+        }
+
     }
 
 }
@@ -2751,17 +2838,61 @@ for (auto trr: original_mp_trrv)
 export_test_results(mp_trrv_for_import,
 "../Files/test_results.csv", false, false);
 
-Term::cout << "A revised copy of your multiplayer data was \
-added to test_results.csv." << std::endl;
+Term::cout << "A revised copy of your multiplayer test result \
+data was added to test_results.csv." << std::endl;
+
+export_verses(vrv, verses_file_path);
+
+Term::cout << "Your Bible verse file was also updated with the \
+results of your multiplayer tests." << std::endl;
+
+// Adding the player's word-level multiplayer results to the 
+// single-player word-level results file:
+
+std::vector<Word_Result_Row> original_mp_wrrv = import_word_results(
+    mp_word_results_filename);
+
+std::vector<Word_Result_Row> mp_wrrv_for_import;
+
+Term::cout << "Finished importing multiplayer word result data \
+from:\n" << mp_test_results_filename << std::endl;
+
+for (auto wrr: original_mp_wrrv)
+
+{// Using the multiplayer test number/single-player test number
+// map we created earlier to determine whether this given result
+// was typed by the player whose multiplayer results we wish to copy
+// into the single-player ones:
+    if (mp_to_sp_test_number_map.find(wrr.test_number)
+    != mp_to_sp_test_number_map.end()) // Based on p. 584 of PPP3.
+    // A C++-20 solution, shared by Denis Sablukov, can be found here:
+    // https://stackoverflow.com/a/54200516/13097194
+    {
+        Word_Result_Row wrr_for_import = wrr;
+        // Replacing the original multiplayer test number with
+        // one that will correspond to other single-player numbers:
+        long new_wrr_test_number = mp_to_sp_test_number_map[
+            wrr_for_import.test_number];
+        wrr_for_import.test_number = new_wrr_test_number;
+        mp_wrrv_for_import.push_back(wrr_for_import);
+    }
+}
+
+export_word_results(mp_wrrv_for_import,
+"../Files/word_results.csv", false, false);
+
+Term::cout << "A revised copy of your multiplayer word result \
+data was added to word_results.csv. Multiplayer imports are now \
+complete! However, visualizations of your single-player results will \
+not be updated until you next run TTTB in single-player mode.\n" 
+<< std::endl;
+
 }
 
 else 
 {Term::cout << "Import canceled. Your single-player files were \
 not modified." << std::endl;
 }
-
-// 
-
 
 }
 

@@ -30,16 +30,19 @@ sp_visualizations_folder = '../Visualizations/Single_Player/'
 
 
 df_tr = pd.read_csv('../Files/test_results.csv') # tr = 'test results'
-df_tr.rename(columns = {'Test_Number':'Test number'}, inplace = True)
 
 #Converting start/end timestamps to DateTime values:
 for col in ['Local_Test_Start_Time', 'Local_Test_End_Time']:
     df_tr[col] = pd.to_datetime(df_tr[col])
 # Ensuring the tests are being displayed in chronological order:
-# (This will help ensure that the 'Test_ID' values that we're about
-# to create are accurate)
+# (This may not always be the case, especially if the player imported
+# multiplayer results into his/her single-player file.)
+# (This will help ensure that the 'chronological test number' values 
+# that we're about to create are accurate.)
 df_tr = df_tr.sort_values(
     'Local_Test_Start_Time').reset_index(drop=True).copy()
+
+df_tr['Chronological test number'] = df_tr.index+1
 
 df_tr
 
@@ -174,8 +177,8 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 
 
 fig_wpm_by_test = px.line(
-    df_tr, x = 'Test number', y = 'WPM',
-title = 'WPM by Test Number',)
+    df_tr, x = 'Chronological test number', y = 'WPM',
+title = 'WPM by Chronological Test Number',)
 fig_wpm_by_test.write_html(f'{sp_visualizations_folder}WPM_by_race.html',
                            include_plotlyjs = 'cdn')
 
@@ -219,7 +222,7 @@ by_Tag_1.html',
 #     df_endurance, x = 'Rank', 
 #     y = col,
 #     title = 'Most ' + col,
-#     hover_data = ['Test number', 'Local_Test_Start_Time'])
+#     hover_data = ['Chronological test number', 'Local_Test_Start_Time'])
     
 #     fig_endurance.write_html('Single_Player/Endurance_Top_50_rolling_'+col.replace(
 #         ' ', '_')+'.html', 
@@ -307,10 +310,10 @@ df_tr.head()
 
 df_mean_wpm_by_within_session_test_number = df_tr.pivot_table(
     index = 'Within_Session_Test_Number',
-                  values = ['WPM', 'Test number'], 
+                  values = ['WPM', 'Chronological test number'], 
                   aggfunc = {'WPM':'mean', 
-                             'Test number':'count'}).reset_index().rename(
-    columns = {'Test number':'Number of tests'})
+                             'Chronological test number':'count'}).reset_index().rename(
+    columns = {'Chronological test number':'Number of tests'})
 df_mean_wpm_by_within_session_test_number
 
 
@@ -336,33 +339,37 @@ fig_mean_wpm_by_within_session_test_number
 # to get used as a color value for the following chart:
 # (I found that, when this value was passed as an integer, no lines
 # appeared within the chart.)
-df_tr['Test number as string'] = df_tr['Test number'].astype('str')
+df_tr['Chronological test number as string'] = df_tr[
+'Chronological test number'].astype('str')
 
 
 # In[21]:
 
 
 df_tr.query(
-    "Within_Session_Test_Number.notna()").sort_values('Test number').copy()
+    "Within_Session_Test_Number.notna()").sort_values(
+'Chronological test number').copy()
 
 
-# In[22]:
+# In[23]:
 
 
-df_tr_for_wpm_by_session = df_tr.query("Within_Session_Test_Number.notna()").copy()
-df_tr_for_wpm_by_session['Within_Session_Test_Number'] = df_tr_for_wpm_by_session[
+df_tr_for_wpm_by_session = df_tr.query(
+"Within_Session_Test_Number.notna()").copy()
+df_tr_for_wpm_by_session[
+'Within_Session_Test_Number'] = df_tr_for_wpm_by_session[
 'Within_Session_Test_Number'].astype('int')
 df_tr_for_wpm_by_session
 
 
 # Not sure why lines aren't appearing within the following chart; I'll need to debug this further.
 
-# In[23]:
+# In[24]:
 
 
 fig_wpm_by_session_num_comparison = px.line(df_tr_for_wpm_by_session,
         x = 'Within_Session_Test_Number', y = 'WPM',
-       color = 'Test number as string').update_traces(
+       color = 'Chronological test number as string').update_traces(
     mode = 'markers+lines').update_layout(showlegend = False)
 fig_wpm_by_session_num_comparison.write_html(
     f'{sp_visualizations_folder}/WPM_by_Within_Session_Test_Number.html', 
@@ -370,7 +377,7 @@ fig_wpm_by_session_num_comparison.write_html(
 fig_wpm_by_session_num_comparison
 
 
-# In[24]:
+# In[25]:
 
 
 end_time = time.time()
