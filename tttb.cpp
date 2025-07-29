@@ -2384,6 +2384,21 @@ not have any spaces." << std::endl;
                 multiplayer_filename_string.substr(
                     0, 16));
         }
+
+
+    if (multiplayer_filename_string == "CMR")
+    // Since 'CMR' is used as a string for combined multiplayer
+    // results, this entry will be changed to CMR1 just in case
+    // a combined multiplayer response file with the same
+    // initial timestamp will get saved to the file list. (This
+    // is very unlikely, but better safe than sorry!)
+    {multiplayer_filename_string = "CMR1";}
+    
+    Term::cout << "In order to prevent another file from getting \
+overwritten, 'CMR1' will be used in place of 'CMR'." << std::endl;
+
+
+    
 // Initializing filenames for test results, word results, and 
 // a pivot table that will store players' avearge WPMs;
 
@@ -2646,7 +2661,6 @@ try
 }
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
-
 }
 
 
@@ -2896,6 +2910,52 @@ not modified." << std::endl;
 
 }
 
+void combine_multiplayer_results()
+// This function calls a Python script that (1) combines multiple
+// sets of multiplayer results into the same file, then (2)
+// calls another Python script to create visualizations of those
+// results.
+{Term::cout << "Enter the first and last verse IDs (inclusive) of \
+the multiplayer session, separated by a space. Only results within \
+this range of IDs will get incorporated into the \
+results." << std::endl;
+
+std::string first_verse_id = ""; // The Python script will convert
+// these values to integers, so they can be defined as strings here.
+std::string last_verse_id = "";
+
+Term::cin >> first_verse_id >> last_verse_id;
+
+Term::cout << "Enter 'y' to process these results and 'n' to \
+cancel." << std::endl;
+
+std::string result_combination_confirmation;
+
+Term::cin >> result_combination_confirmation;
+
+if (result_combination_confirmation == "y")
+
+{
+std::string system_call = "python \
+mp_file_combiner.py " + first_verse_id + " " + last_verse_id;
+
+try
+{system(system_call.c_str());
+}
+catch (...)
+{Term::cout << "Unable to run system command." << std::endl;}
+}
+
+else
+{
+Term::cout << "Canceling operation. No files were modified." << 
+std::endl;
+}
+
+Term::cout << std::endl;
+
+}
+
 
 
 int main()
@@ -2926,8 +2986,10 @@ can't catch user input. Exiting...");
 
         Term::cout << "Welcome to the C++ Edition of Type Through \
 the Bible! Enter 's' or 'm' for single-player or multiplayer mode, \
-respectively. To import multiplayer results into your single-player \
-files, enter 'r.'\nTo exit the game, press 'e.'" << std::endl;
+respectively.\nTo import multiplayer results into your single-player \
+files, enter 'r.'\nTo combine multiplayer results within \
+..Files/MP_Test_Result_Files_To_Combine into a single file, then \
+analyze them, enter 'c'.\nTo exit the game, press 'e.'" << std::endl;
 
         Term::cin >> gameplay_option;
         switch (gameplay_option)
@@ -2955,6 +3017,12 @@ files, enter 'r.'\nTo exit the game, press 'e.'" << std::endl;
         case 'r':
         {
             import_mp_results();
+            continue;
+        }
+
+        case 'c':
+        {
+            combine_multiplayer_results();
             continue;
         }
 

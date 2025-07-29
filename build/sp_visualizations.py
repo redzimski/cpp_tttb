@@ -24,7 +24,7 @@ import numpy as np
 sp_visualizations_folder = '../Visualizations/Single_Player/'
 
 
-# ## Analyzing test result file:
+# ## Analyzing test result data:
 
 # In[2]:
 
@@ -39,6 +39,7 @@ for col in ['Local_Test_Start_Time', 'Local_Test_End_Time']:
 # multiplayer results into his/her single-player file.)
 # (This will help ensure that the 'chronological test number' values 
 # that we're about to create are accurate.)
+
 df_tr = df_tr.sort_values(
     'Local_Test_Start_Time').reset_index(drop=True).copy()
 
@@ -47,9 +48,31 @@ df_tr['Chronological test number'] = df_tr.index+1
 df_tr
 
 
-# Calculating various timing statistics that will prove useful for endurance-related analyses:
+# Adding session numbers to DataFrame:
+# 
+# (The following approach uses a combination of np.where() and cumsum() to create these numbers. I imagine that this approach is faster than is looping through the DataFrame to assign them, but I could be wrong.)
 
 # In[3]:
+
+
+# We can identify new sessions as those whose within-session test number
+# is 1:
+df_tr['new_session'] = np.where(
+    df_tr['Within_Session_Test_Number'] == 1, 1, 0)
+# The following code increments the session number counter by 1 when
+# a new session has begun and keeps it at its current number otherwise,
+# thus allowing us to determine how many sessions the player has 
+# started thus far.)
+df_tr['Session number'] = df_tr['new_session'].cumsum()
+# We won't have any further need for the new_session column, so we can
+# remove it:
+df_tr.drop('new_session', axis = 1, inplace = True)
+df_tr
+
+
+# Calculating various timing statistics that will prove useful for endurance-related analyses:
+
+# In[4]:
 
 
 for time_type in ['Start', 'End']:
@@ -85,7 +108,7 @@ df_tr.head(5)
 # 
 # (This information will be helpful for calculating endurance-based statistics.)
 
-# In[4]:
+# In[5]:
 
 
 col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
@@ -98,7 +121,7 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 # 
 # In the meantime, I've commented out this code so that it won't cause performance issues going forward.
 
-# In[5]:
+# In[6]:
 
 
 # df_tr_condensed = df_tr[['Unix_Test_Start_Time', 
@@ -107,7 +130,7 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 # alternative engine options, but unfortunately, that wasn't the case.
 
 
-# In[6]:
+# In[7]:
 
 
 # for col_seconds_pair in col_seconds_pair_list:
@@ -123,7 +146,7 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 
 # Note: I thought the following approach might actually be faster than the above option, as it only requires a single loop through the whole DataFrame. However, I found it to take a bit longer than the previous method.
 
-# In[7]:
+# In[8]:
 
 
 # for col in ['characters_typed_in_next_hour',
@@ -134,14 +157,14 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 # for i in range(len(df_tr)):
 #     start_time = df_tr.iloc[i]['Unix_Test_Start_Time'].astype(
 #         'int64')
-    
+
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #         'characters_typed_in_next_hour')] = df_tr[(
 #         df_tr[
 #         'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #             'Unix_Test_End_Time'] 
 #         < (start_time + 3600))]['Characters'].sum()
-    
+
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #         'characters_typed_in_next_30_minutes')] = df_tr[(
 #         df_tr[
@@ -155,17 +178,17 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 #             'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #                 'Unix_Test_End_Time'] 
 #             < (start_time + 900))]['Characters'].sum()
-    
+
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #             'characters_typed_in_next_10_minutes')] = df_tr[(
 #             df_tr[
 #             'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #                 'Unix_Test_End_Time'] 
 #             < (start_time + 600))]['Characters'].sum()
-            
 
 
-# In[8]:
+
+# In[9]:
 
 
 # df_tr
@@ -173,7 +196,7 @@ col_seconds_pair_list = [['Characters Typed in Next Hour', 3600],
 
 # ### WPM results by test:
 
-# In[9]:
+# In[10]:
 
 
 fig_wpm_by_test = px.line(
@@ -185,7 +208,7 @@ fig_wpm_by_test.write_html(f'{sp_visualizations_folder}WPM_by_race.html',
 
 # ### Average WPM by Tag 1 values:
 
-# In[10]:
+# In[11]:
 
 
 df_wpm_by_tag_1 = df_tr.pivot_table(index = 'Tag_1', values = 'WPM',
@@ -193,7 +216,7 @@ df_wpm_by_tag_1 = df_tr.pivot_table(index = 'Tag_1', values = 'WPM',
 df_wpm_by_tag_1
 
 
-# In[11]:
+# In[12]:
 
 
 fig_wpm_by_tag_1 = px.bar(df_wpm_by_tag_1, x = 'Tag_1', y = 'WPM',
@@ -209,7 +232,7 @@ by_Tag_1.html',
 # 
 # (I commented out the following visualization code because it relies on a very inefficient set of code that I have also commented out.)
 
-# In[12]:
+# In[13]:
 
 
 # for col in [pair[0] for pair in col_seconds_pair_list]:
@@ -223,7 +246,7 @@ by_Tag_1.html',
 #     y = col,
 #     title = 'Most ' + col,
 #     hover_data = ['Chronological test number', 'Local_Test_Start_Time'])
-    
+
 #     fig_endurance.write_html('Single_Player/Endurance_Top_50_rolling_'+col.replace(
 #         ' ', '_')+'.html', 
 #     include_plotlyjs = 'cdn')
@@ -231,7 +254,7 @@ by_Tag_1.html',
 
 # ## Visualizing clock-based endurance statistics:
 
-# In[13]:
+# In[14]:
 
 
 for time_category in ['Hour', '30-Minute Block', '15-Minute Block',
@@ -245,13 +268,13 @@ for time_category in ['Hour', '30-Minute Block', '15-Minute Block',
     aggfunc = 'sum').reset_index().sort_values(
     'Characters', ascending = False).reset_index(drop=True).head(50)
     df_endurance['Rank'] = (df_endurance.index + 1)
-    
+
     fig_endurance = px.bar(
     df_endurance, x = f'Unique {time_category}', 
     y = 'Characters',
     title = 'Most Characters Typed By ' + time_category,
     hover_data = 'Rank')
-    
+
     fig_endurance.write_html(
     f'{sp_visualizations_folder}Endurance_Top_50_\
 Clock_'+time_category.replace(' ', '_')+'.html', 
@@ -260,7 +283,7 @@ Clock_'+time_category.replace(' ', '_')+'.html',
 
 # Graphing keypresses by date (in both chronological and ranked order):
 
-# In[14]:
+# In[15]:
 
 
 df_top_dates_by_keypresses = df_tr.query(
@@ -279,7 +302,7 @@ fig_keypresses_by_date.write_html(f'{sp_visualizations_folder}Keypresses\
 _Typed_by_Date.html', include_plotlyjs='cdn')
 
 
-# In[15]:
+# In[16]:
 
 
 fig_top_dates_by_keypresses = px.bar(
@@ -293,19 +316,19 @@ fig_top_dates_by_keypresses.write_html(
     include_plotlyjs='cdn')
 
 
-# In[16]:
+# In[17]:
 
 
 ## Calculating mean WPMs by test number:
 
 
-# In[17]:
+# In[18]:
 
 
 df_tr.head()
 
 
-# In[18]:
+# In[19]:
 
 
 df_mean_wpm_by_within_session_test_number = df_tr.pivot_table(
@@ -317,7 +340,7 @@ df_mean_wpm_by_within_session_test_number = df_tr.pivot_table(
 df_mean_wpm_by_within_session_test_number
 
 
-# In[19]:
+# In[20]:
 
 
 fig_mean_wpm_by_within_session_test_number = px.line(
@@ -329,55 +352,26 @@ fig_mean_wpm_by_within_session_test_number = px.line(
 fig_mean_wpm_by_within_session_test_number.write_html(
     f'{sp_visualizations_folder}/Mean_WPM_by_Within_Session_Test_Number.html', 
     include_plotlyjs='cdn')
-fig_mean_wpm_by_within_session_test_number
-
-
-# In[20]:
-
-
-# Creating a string version of the test number field that will allow it
-# to get used as a color value for the following chart:
-# (I found that, when this value was passed as an integer, no lines
-# appeared within the chart.)
-df_tr['Chronological test number as string'] = df_tr[
-'Chronological test number'].astype('str')
+#fig_mean_wpm_by_within_session_test_number
 
 
 # In[21]:
 
 
-df_tr.query(
-    "Within_Session_Test_Number.notna()").sort_values(
-'Chronological test number').copy()
-
-
-# In[23]:
-
-
-df_tr_for_wpm_by_session = df_tr.query(
-"Within_Session_Test_Number.notna()").copy()
-df_tr_for_wpm_by_session[
-'Within_Session_Test_Number'] = df_tr_for_wpm_by_session[
-'Within_Session_Test_Number'].astype('int')
-df_tr_for_wpm_by_session
-
-
-# Not sure why lines aren't appearing within the following chart; I'll need to debug this further.
-
-# In[24]:
-
-
-fig_wpm_by_session_num_comparison = px.line(df_tr_for_wpm_by_session,
+fig_wpm_by_session_num_comparison = px.line(df_tr.query(
+"Within_Session_Test_Number.notna()"),
         x = 'Within_Session_Test_Number', y = 'WPM',
-       color = 'Chronological test number as string').update_traces(
-    mode = 'markers+lines').update_layout(showlegend = False)
+       color = 'Session number', title = "WPM by Session Number and \
+Within-Session Test Number").update_traces(
+    mode = 'markers+lines').update_layout(showlegend = False,
+    xaxis_title = 'Within-session test number')
 fig_wpm_by_session_num_comparison.write_html(
     f'{sp_visualizations_folder}/WPM_by_Within_Session_Test_Number.html', 
     include_plotlyjs='cdn')
-fig_wpm_by_session_num_comparison
+# fig_wpm_by_session_num_comparison
 
 
-# In[25]:
+# In[22]:
 
 
 end_time = time.time()

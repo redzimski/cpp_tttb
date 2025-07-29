@@ -15,7 +15,7 @@
 # 
 # When players complete multiplayer games within Type Through The Bible, this script will then get called via a system() call. However, it can also be run as a standalone file if needed.
 
-# In[ ]:
+# In[1]:
 
 
 import time
@@ -33,9 +33,11 @@ mp_visualizations_folder = '../Visualizations/Multiplayer/'
 
 # Checking whether this script is running within a Jupyter notebook: 
 # 
-# (This will allow us to determine whether to specify our multiplayer filename via argparse (which will only work when the .py version of the file is being rurn) or via a notebook-specific argument.
+# (This will allow us to determine whether to specify our multiplayer filename via argparse (which will only work when the .py version of the file is being rurn) or via a notebook-specific argument).)
+# 
+# This code is based on Gustavo Bezerra's answer at https://stackoverflow.com/a/39662359/13097194 .
 
-# In[ ]:
+# In[2]:
 
 
 notebook_exec = False
@@ -48,7 +50,7 @@ except:
     pass
 
 # notebook_exec
-    
+
 
 
 # Adding code that will allow the caller to specify which multiplayer results file to analyze:
@@ -57,7 +59,7 @@ except:
 # 
 # If you're running this code within a notebook, update the test_results_timestamp value as needed.
 
-# In[ ]:
+# In[3]:
 
 
 if notebook_exec == False:
@@ -70,7 +72,7 @@ if notebook_exec == False:
     args = parser.parse_args()
     test_results_timestamp = args.results_timestamp
 else:
-    test_results_timestamp = '20250722T010046'
+    test_results_timestamp = '20250725T130325'
 
 test_results_timestamp
 
@@ -79,7 +81,7 @@ test_results_timestamp
 # 
 # (There *should* only be one such timestamp, but just in case two or more share this timestamp--which is extremely improbable--only one will be retained.)
 
-# In[ ]:
+# In[4]:
 
 
 test_results_file = [file for file in os.listdir(mp_results_folder) if 
@@ -92,7 +94,7 @@ test_results_name = test_results_file[:-17]
 test_results_file, test_results_name
 
 
-# In[ ]:
+# In[5]:
 
 
 df = pd.read_csv(mp_results_folder+test_results_file) 
@@ -121,7 +123,7 @@ df.tail()
 # 
 # (This will make it easier to produce a graph that uses different line dash types to differentiate between cumulative and test-specific WPM values.)
 
-# In[ ]:
+# In[6]:
 
 
 df_wpm_type_melt = df.melt(id_vars = ['Player', 'Player test number'],
@@ -137,7 +139,7 @@ df_wpm_type_melt['WPM Type'] = df_wpm_type_melt['WPM Type'].replace(
 df_wpm_type_melt
 
 
-# In[ ]:
+# In[7]:
 
 
 fig_wpm_by_player = px.line(df_wpm_type_melt, 
@@ -157,7 +159,7 @@ Player_And_Test.html',
 
 # Calculating mean WPMs by player and round as well as overall WPMs:
 
-# In[ ]:
+# In[8]:
 
 
 df_mean_wpm_by_player_and_round = df.pivot_table(
@@ -182,15 +184,37 @@ df_mean_wpm_by_player_and_round['Round'] = (
 df_mean_wpm_by_player_and_round
 
 
-# In[ ]:
+
+# In[9]:
+
+
+# Calculating players' overall ranks:
+df_overall_ranks = df_mean_wpm_by_player_and_round.query(
+"Round == 'Overall'").copy().sort_values(
+'WPM', ascending = False).reset_index(drop=True)
+df_overall_ranks['Overall rank'] = df_overall_ranks.index + 1
+df_overall_ranks
+
+
+# In[10]:
+
+
+df_mean_wpm_by_player_and_round = df_mean_wpm_by_player_and_round.merge(
+df_overall_ranks[['Player', 'Overall rank']], 
+on = 'Player', how = 'left')
+df_mean_wpm_by_player_and_round
+
+
+# In[11]:
 
 
 fig_mean_wpm_by_player_and_round = px.bar(
-    df_mean_wpm_by_player_and_round, x = 'Round', 
+    df_mean_wpm_by_player_and_round.sort_values(
+'Overall rank', ascending = True), x = 'Round', 
        y = 'WPM', color = 'Player', barmode = 'group',
     color_discrete_sequence = px.colors.qualitative.Alphabet,
     title = 'Mean WPM by Player and Round',
-      text_auto = '.0f')
+      text_auto = '.0f', hover_data = 'Overall rank')
 fig_mean_wpm_by_player_and_round.write_html(
     f'{mp_visualizations_folder}{test_results_name}_Mean_WPM_\
 By_Player_And_Round.html',
@@ -198,7 +222,7 @@ By_Player_And_Round.html',
 # fig_mean_wpm_by_player_and_round
 
 
-# In[ ]:
+# In[12]:
 
 
 df_wins = df.pivot_table(index = 'Player', values = 'Player had best \
@@ -208,7 +232,7 @@ df_wins.sort_values('Player had best WPM for this test', ascending = False,
 df_wins
 
 
-# In[ ]:
+# In[13]:
 
 
 fig_wins = px.bar(df_wins, x = 'Player', 
@@ -223,7 +247,7 @@ wins_by_player.html', include_plotlyjs = 'cdn')
 # fig_wins
 
 
-# In[ ]:
+# In[14]:
 
 
 df_highest_wpm = df.pivot_table(index = 'Player', values = 'WPM', 
@@ -232,7 +256,7 @@ df_highest_wpm.sort_values('WPM', ascending = False, inplace = True)
 df_highest_wpm
 
 
-# In[ ]:
+# In[15]:
 
 
 fig_highest_wpm = px.bar(df_highest_wpm, x = 'Player', 
@@ -247,7 +271,7 @@ highest_wpm_by_player.html', include_plotlyjs = 'cdn')
 # fig_highest_wpm
 
 
-# In[ ]:
+# In[16]:
 
 
 end_time = time.time()
