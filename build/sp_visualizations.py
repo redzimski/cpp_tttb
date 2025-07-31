@@ -222,8 +222,7 @@ df_wpm_by_tag_1
 fig_wpm_by_tag_1 = px.bar(df_wpm_by_tag_1, x = 'Tag_1', y = 'WPM',
                          title = 'Mean WPM by Tag_1 value')
 fig_wpm_by_tag_1.write_html(f'{sp_visualizations_folder}/Mean_WPM_\
-by_Tag_1.html',
-                            include_plotlyjs = 'cdn')
+by_Tag_1.html', include_plotlyjs = 'cdn')
 
 
 # ## Creating endurance-related charts:
@@ -371,7 +370,145 @@ fig_wpm_by_session_num_comparison.write_html(
 # fig_wpm_by_session_num_comparison
 
 
+# ## Accuracy analyses:
+
 # In[22]:
+
+
+df_wpm_by_error_rate = df_tr.pivot_table(
+    index = 'Error_and_Backspace_Rate', 
+    values = 'WPM', aggfunc = 'mean').reset_index()
+
+
+# ## Calculating accuracy quantiles:
+
+# In[23]:
+
+
+# Creating a list of deciles:
+decile_list = np.arange(0, 1.01, 0.1)
+decile_list
+
+
+# Calculating percentile-based accuracy bins:
+# 
+# (The `duplicates = drop` component prevents the code from raising an error if two or more bins have the same group (which can happen, for instance, if error-free races account for a large percentage of your overall races).
+
+# In[24]:
+
+
+df_tr['Error/backspace rate bin'] = pd.qcut(
+    df_tr['Error_and_Backspace_Rate'], 10, duplicates = 'drop').astype(
+'str')
+
+df_tr
+
+
+# Calculating rolling WPM averages for each WPM category:
+# 
+# (This code is based on yoav_aaa's StackOverflow response at https://stackoverflow.com/a/64150512/13097194 ).
+# 
+# (Note that using DataFrameGroupBy (https://pandas.pydata.org/docs/dev/reference/api/pandas.core.groupby.DataFrameGroupBy.rolling.html) reorders the dataset and thus won't be an ideal method.)
+
+# In[25]:
+
+
+df_tr['10-race rolling WPM for error/backspace rate bin'] = df_tr.groupby(
+'Error/backspace rate bin')['WPM'].transform(
+lambda wpm_within_error_bin: wpm_within_error_bin.rolling(10).mean())
+df_tr
+
+
+# In[26]:
+
+
+fig_rolling_wpm_by_error_rate = px.line(df_tr, x = 'Chronological test number',
+        y = '10-race rolling WPM for error/backspace rate bin', 
+color = 'Error/backspace rate bin',
+       title = 'Rolling 10-Race WPMs by Error + Backspace Rate Bin').update_layout(
+    yaxis_title = '10-race rolling WPM')
+
+fig_rolling_wpm_by_error_rate.write_html(
+f'{sp_visualizations_folder}/Mean_Rolling_WPM_\
+by_accuracy_bin.html', include_plotlyjs = 'cdn')
+
+
+# In[27]:
+
+
+df_mean_wpm_by_accuracy_bin = df_tr.pivot_table(
+    index = 'Error/backspace rate bin',
+                  values = ['WPM', 'Chronological test number'], 
+                  aggfunc = {'WPM':'mean', 
+'Chronological test number':'count'}).reset_index().rename(
+columns = {'Chronological test number':'Number of races'})
+df_mean_wpm_by_accuracy_bin
+
+
+# In[28]:
+
+
+fig_mean_wpm_by_error_rate = px.bar(
+df_mean_wpm_by_accuracy_bin, x = 'Error/backspace rate bin',
+       y = 'WPM', hover_data = 'Number of races',
+       text_auto = '.2f',
+title = 'Mean WPM by Accuracy Bin')
+fig_mean_wpm_by_error_rate.write_html(
+f'{sp_visualizations_folder}/Mean_WPM_by_accuracy_bin.html', 
+include_plotlyjs = 'cdn')
+
+
+# ## Analyzing word-level results:
+
+# In[29]:
+
+
+df_wr = pd.read_csv('../Files/word_results.csv')
+df_wr['Count'] = 1
+
+
+# Creating a table of frequently-typed words by average WPM:
+
+# In[30]:
+
+
+df_mean_wpm_by_word = df_wr.pivot_table(
+index = 'Word', values = ['WPM', 'Count'],
+aggfunc = {'WPM':'mean', 'Count':'count'}).reset_index()
+words_to_remove = ['s']
+df_mean_wpm_by_word.query("Count >= 10 & Word not in @words_to_remove",
+                         inplace = True)
+df_mean_wpm_by_word.sort_values('WPM', ascending = False, inplace = True)
+df_mean_wpm_by_word
+
+
+# In[31]:
+
+
+fig_highest_word_level_wpms = px.bar(df_mean_wpm_by_word.head(50), 
+       x = 'Word', y = 'WPM', text_auto = '.2f',
+      hover_data = 'Count',
+      title = 'Highest word-level mean WPMs for words typed at least 10 \
+times')
+fig_highest_word_level_wpms.write_html(
+f'{sp_visualizations_folder}/words_with_highest_wpms.html', 
+include_plotlyjs = 'cdn')
+
+
+# In[32]:
+
+
+fig_lowest_word_level_wpms = px.bar(df_mean_wpm_by_word.sort_values(
+'WPM').head(50), x = 'Word', y = 'WPM', text_auto = '.2f',
+      hover_data = 'Count',
+      title = 'Lowest word-level mean WPMs for words typed at least 10 \
+times')
+fig_lowest_word_level_wpms.write_html(
+f'{sp_visualizations_folder}/words_with_lowest_wpms.html', 
+include_plotlyjs = 'cdn')
+
+
+# In[33]:
 
 
 end_time = time.time()

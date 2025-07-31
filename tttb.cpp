@@ -46,44 +46,15 @@ Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
-    1. IMPORTANT: Update count_sp_test_results so that the 
-    test number that it produces is equal to the *highest* test
-    number value found within that file. (This will prevent 
-    duplicate test number values from appearing; this issue could
-    arise if you deleted test results from a central region within
-    your test results file, as then the count of all results might
-    be lower than some of the numbers.)
+    1. Update your code as needed so that the Python commands (both
+    within the C++ file and the multiplayer-file-combination Python 
+    file) work on Windows and Mac, not just Linux.
 
-    2. Create a new Python script that will convert multiple
-    individual multiplayer records (presumably completed within 
-    single-player mode, but not necessarily) into a single file that 
-    can then be analyzed by your main script. (This will allow 
-    multiple players to compete simultaneously--just on different 
-    devices.) Make sure that this script is also compatible with
-    multiplayer files that contain multiple players.
-    To work on this script, you'll need a set of files that all
-    contain the same set of results; two or more should be 
-    single-player results; one or more should be a multiplayer
-    results file with a single player's score; and one or more
-    should be a multiplayer results file that has scores from
-    two or more players.
-    
-    Also add documentation that explains this step and 
-    provides suggested instructions for this game mode (e.g. using 
+    2. Add documentation that explains your multiplayer-file-combination
+    feature provides suggested instructions for this game mode 
+    (e.g. using 
     an online storage option or a local NAS hard drive to collect 
     results from each player).
-    Make sure that this script (1) only retains results that come
-    from the same set of tests as the first result (or a specified
-    one) and (2) can correctly process two or more files with the
-    exact same name for a player (e.g. by renaming them).
-
-
-    3. Replace terminal function calls with ANSI escape codes, which
-    may give you a minor performance advantage, then run some
-    practice tests to see what your processing time looks like.
-
-    4. See whehter temporarily hiding word-level results processing
-    decreases your average processing time.
 
 
     5. Update the game so that, following a crash, you'll have the 
@@ -104,11 +75,13 @@ To dos (very incomplete list)!
 
     6. Continue working on stats code. In particular:
 
-        a. Give players the option *not* to run stats code (in case
-        their computer setup doesn't support it yet.)
+        a. Add in more word-level stats, such as accuracy data 
+        (including words with the highest and lowest accuracy 
+        ranges). 
 
-        b. Add in accuracy-related stats, such as change in WPM
-        results over time for specific accuracy ranges.
+        b. Add in tree maps and/or bar charts that compare the 
+        number of characters you've typed for each Bible chapter
+        with the total number of characters in that chapter
 
 
     7. Update Readme with gameplay + compilation information.
@@ -159,6 +132,21 @@ non-marathon-mode session or s for a marathon-mode session).";
 std::string verses_file_path = "../Files/CPDB_for_TTTB.csv";
 std::string autosaved_verses_file_path = "../Files/\
 autosaved_CPDB_for_TTTB.csv";
+
+// Defining colors that represent correct and incorrect output:
+// (This code is based on the Hello World example for 
+// cpp-terminal at https://github.com/jupyter-xeus/cpp-terminal .)
+
+std::string correct_output_color_code = Term::color_fg(
+    Term::Color::Name::Green);
+std::string incorrect_output_color_code = Term::color_fg(
+    Term::Color::Name::Red);
+std::string default_output_color_code = Term::color_fg(
+    Term::Color::Name::Default);
+std::string print_color_code = default_output_color_code; // This
+// variable will get updated within typing tests to reflect either
+// correct or incorrect output.
+
 
 /* Defining a struct that can represent each row
 of CPDB_for_TTTB.csv (the .csv file containing all
@@ -569,6 +557,12 @@ of that test.
     int starting_result_row = (verse_row.characters - 1) / (
         term_size.columns()) + 2;
 
+    // Calling cursor_move to determine the cursor reposition 
+    // code that will bring the cursor right under the verse
+    // after each keypress: 
+
+    std::string cursor_reposition_code = Term::cursor_move(
+        starting_result_row, 1);
 
     if (marathon_mode == false) // The following prompt should be skipped
     // within marathon mode, thus allowing users to go directly
@@ -662,8 +656,7 @@ the space bar to begin the typing test." << std::endl;
     // https://jupyter-xeus.github.io/cpp-terminal/cursor_8cpp_source.html
     // for examples of the original codes underlying thsi and 
     // related functions. 
-    Term::cout << Term::cursor_move(
-        starting_result_row, 1) << "\033[J" << std::endl;
+    Term::cout << cursor_reposition_code << "\033[J" << std::endl;
 
     // Starting our timing clock:
     // (This code was based on p. 1010 of The C++ Programming Language,
@@ -792,7 +785,6 @@ the space bar to begin the typing test." << std::endl;
             /* Determining how to color the output: (If the output is correct
             so far, it will be colored green; if there is a mistake, it will
             instead be colored red.*/
-            auto print_color = Term::Color::Name::Default;
             if (user_string == verse_row.verse.substr(0, user_string.length()))
             // Checking to see whether we should start or end our word timer:
             {   // Checking to see whether we should begin timing a new word:
@@ -874,13 +866,13 @@ word_map[latest_first_character_index].error_and_backspace_rate =
     word_error_and_backspace_rate;
                 }
 
-                print_color = Term::Color::Name::Green;
+            print_color_code = correct_output_color_code;
             }
             else // The user made a mistake, as signified by the fact that
             // this string doesn't match the initial section of the verse that
             // has the same length.
             {
-                print_color = Term::Color::Name::Red;
+                print_color_code = incorrect_output_color_code;
                 if ((keyname != "Backspace") && (
                     keyname != "Alt+Del"))
                 {
@@ -916,10 +908,9 @@ word_map[latest_first_character_index].error_and_backspace_rate =
 
 
 
-            Term::cout << Term::cursor_move(
-                starting_result_row, 1) << "\033[J" <<
-            Term::color_fg(print_color) << user_string <<
-            color_fg(Term::Color::Name::Default) << std::endl;
+            Term::cout << cursor_reposition_code << "\033[J" <<
+            print_color_code << user_string <<
+            default_output_color_code << std::endl;
 
             auto processing_end_time = std::chrono::
             high_resolution_clock::now();
@@ -1758,18 +1749,20 @@ void export_verses(const std::vector<Verse_Row> &vrv,
 
 
 long count_sp_test_results()
-// This function determines how many completed tests are present
-// within the single-player test results .csv file.
-// (This will allow us to determine the correct
-// test_number value to assign to the tests that will get
-// completed this session.
-// (We could avoid this step by storing the number of tests
-// in a separate text file, then updating it as needed,
-// but there are a number of ways that number could get 
-// unsynced from the actual number of races completed. Thus,
-// this approach *should* be more reliable.
+// This function locates the highest existing test number within
+// the test_results.csv file, then returns that number.
+// (Note: a previous version of this function simply counted the
+// number of test results; however, if rows prior to the final
+// result within that file ever got deleted, that approach could
+// lead to duplicate test result IDs--which could cause all sorts
+// of issues. The current approach helps prevent duplicate test
+// results from appearing.
 {
-    long test_number = 0;
+    long test_number = 0; // This value will be updated as needed
+    // to match the highest test number completed.
+    long tests_completed = 0; // This number may end up being
+    // less than test_number if rows prior to the last row
+    // within test_results.csv had gotten deleted at some point.
     CSVReader reader("../Files/test_results.csv");
     // Iterating through our test results .csv file in order to 
     // determine how many tests have already been completed and
@@ -1778,9 +1771,16 @@ long count_sp_test_results()
     // will get incremented following completed tests within
     // run_test).
     for (auto &row : reader)
-    {test_number++;}
-    Term::cout << test_number << " tests have been \
+    {tests_completed++;
+    long row_test_number = row["Test_Number"].get<long>();
+    if (row_test_number >= test_number)
+    test_number = row_test_number;}
+    Term::cout << tests_completed << " tests have been \
 completed so far." << std::endl;
+    // For debugging:
+    Term::cout << "The highest test number so far is " 
+    << test_number << "." << std::endl;
+
     return test_number;
 }
 
@@ -2165,17 +2165,33 @@ from which to start this mode." << std::endl;
 // The following code was based on the examples shown at
 // https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
 
+Term::cout << "Enter 'y' to call Python script that updates \
+single-player stats; enter 'n' to skip this process. (This may \
+require some setup on your part; \
+see Readme for more details. You can also run that script \
+separately if you prefer." << std::endl;
+
+std::string sp_stats_update_response = "";
+
+Term::cin >> sp_stats_update_response;
+
+if (sp_stats_update_response == "y")
+{
 try
 {system("python sp_visualizations.py");
 }
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
+}
 
-    Term::cout << "Quitting single-player gameplay session." 
+
+else 
+{Term::cout << "Skipping single-player stats updates." << std::endl;}
+
+Term::cout << "Quitting single-player gameplay session." 
     << std::endl;
 
 }
-
 
 std::vector<std::pair<std::string, double>> calculate_wpms_by_player(
     const std::vector<std::string>& player_names,  
@@ -2645,7 +2661,21 @@ mp_pivot_export_end_time - mp_pivot_export_start_time)
 // The following code was based on
 // https://stackoverflow.com/a/4907852/13097194 
 
-std::string system_call = "python \
+
+
+Term::cout << "Enter 'y' to call Python script that will visualize \
+your new multiplayer stats; enter 'n' to skip this process. \
+(This may require some setup on your part; \
+see Readme for more details. You can also run the multiplayer script \
+separately if you prefer." << std::endl;
+
+std::string mp_stats_update_response = "";
+
+Term::cin >> mp_stats_update_response;
+
+if (mp_stats_update_response == "y")
+
+{std::string system_call = "python \
 mp_visualizations.py " + multiplayer_start_time_as_string;
 // For security purposes, only the timestamp (rather than
 // the user-provided string that makes up part of the filename)
@@ -2661,6 +2691,11 @@ try
 }
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
+}
+
+else 
+{Term::cout << "Skipping multiplayer visualizations." << std::endl;}
+
 }
 
 

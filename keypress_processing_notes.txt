@@ -1,0 +1,5 @@
+Average word processing time, in microseconds, across different conditions:
+Tests 1055 to 1061: Single-player tests before transition to strings. Average: 76.30 (1294 entries)
+1066-1081: post transition to strings. Average: 68.31 (2029 entries)
+1082-1093: no word processing code. Average: 66.3977 (1662 entries)
+1094-1104: Reverted to version with word processing code. Average: 77.14512 (1640 entries)
