@@ -67,3 +67,13 @@ Visualizations/Multiplayer/20250725T131157_mp2playertest_Mean_WPM_By_Player_And_
 Visualizations/Multiplayer/20250725T131157_mp2playertest_wins_by_player.html
 Files/keypress_processing_time.csv
 *KJB3_multiplayer*
+build/build/
+build/_internal/
+build/__pycache__/mp_visualizations.cpython-312.pyc
+build/tttb_py_complement.spec
+build/tttb_py_complement
+build/sp_visualizations.ipynb
+build/mp_visualizations.ipynb
+build/mp_file_combiner.ipynb
+build/pyinstaller_commands.txt
+*older_copies*

@@ -46,11 +46,48 @@ Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
-    1. Update your code as needed so that the Python commands (both
+    1. Currently, your terminal isn't accepting input within Python
+    after being called by std::system(). This appears to be due
+    to an issue with cpp-terminal (since you *can* enter input
+    when calling these files within a program that doesn't use
+    the the cpp-terminal library. Therefore, try the following 
+    solutions in the following order:
+
+    a. Go back to your original setup in which you could pass
+    arguments to the Python file, thus preventing you from having
+    to use input() within the Python scripts. (See whether this
+    works when the files are converted to executables; online
+    comments indicate that it should.)
+
+    b. Update your multiplayer analysis script so that it doesn't
+    request the timestamp, but instead simply modifies the most 
+    recently updated file. (Users could still update previous
+    files by making a minor change to the .csv file and then
+    revising it, thus resetting the last-modified time.) Instruct
+    users to call the multiplayer file combination script by itself
+    so that this issue gets bypassed altogether. (The inputs do work
+    fine when the Pyinstaller-generated executables are called
+    by themselves.)
+
+    c. Keep the current input() setup for the multiplayer 
+    visualizations file, but ask users to call it oustide of the
+    C++ program.
+
+    (NOTE: if you go with method a, you'll probably want to 
+    re-import your code for specifying arguments within C++ for
+    your multiplayer combination files and your multiplayer
+    visualizations script. This can be found within tttb_old_14.cpp.
+    You'll also want to add back the argparse and 
+    notebook-run-checking code that previously existed within your
+    multiplayer visualizations and multiplayer file 
+    combiner scripts; this can be found within your most recent
+    GitHub deployment.
+
+    2. Update your code as needed so that the Python commands (both
     within the C++ file and the multiplayer-file-combination Python 
     file) work on Windows and Mac, not just Linux.
 
-    2. Add documentation that explains your multiplayer-file-combination
+    3. Add documentation that explains your multiplayer-file-combination
     feature provides suggested instructions for this game mode 
     (e.g. using 
     an online storage option or a local NAS hard drive to collect 
@@ -2178,7 +2215,14 @@ Term::cin >> sp_stats_update_response;
 if (sp_stats_update_response == "y")
 {
 try
-{system("python sp_visualizations.py");
+{
+// Only one argument (spv) needs to be passed to 
+// tttb_py_complement for single-player stats; however,
+// since this function still expects two arguments, I'll
+// pass a second argument to it anyway. (There's probably
+// a way to eliminate the need for this second argument,
+// but it's past midnight and this approach will work for now. :)
+std::system("./tttb_py_complement spv spare_arg");
 }
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
@@ -2661,8 +2705,6 @@ mp_pivot_export_end_time - mp_pivot_export_start_time)
 // The following code was based on
 // https://stackoverflow.com/a/4907852/13097194 
 
-
-
 Term::cout << "Enter 'y' to call Python script that will visualize \
 your new multiplayer stats; enter 'n' to skip this process. \
 (This may require some setup on your part; \
@@ -2675,8 +2717,8 @@ Term::cin >> mp_stats_update_response;
 
 if (mp_stats_update_response == "y")
 
-{std::string system_call = "python \
-mp_visualizations.py " + multiplayer_start_time_as_string;
+{std::string system_call = ("./tttb_py_complement mpv " 
++ multiplayer_start_time_as_string);
 // For security purposes, only the timestamp (rather than
 // the user-provided string that makes up part of the filename)
 // will get passed to the following system() call. (The 
@@ -2951,15 +2993,16 @@ void combine_multiplayer_results()
 // calls another Python script to create visualizations of those
 // results.
 {Term::cout << "Enter the first and last verse IDs (inclusive) of \
-the multiplayer session, separated by a space. Only results within \
+the multiplayer session, separated by an underscore. (Example \
+input: 30786_30795) Only results within \
 this range of IDs will get incorporated into the \
-results." << std::endl;
+results.\n\nAlternatively, enter 'y' to have the game \
+detect these IDs within the first set of results that it \
+analyzes." << std::endl;
 
-std::string first_verse_id = ""; // The Python script will convert
-// these values to integers, so they can be defined as strings here.
-std::string last_verse_id = "";
+std::string verse_ids = ""; 
 
-Term::cin >> first_verse_id >> last_verse_id;
+Term::cin >> verse_ids;
 
 Term::cout << "Enter 'y' to process these results and 'n' to \
 cancel." << std::endl;
@@ -2971,8 +3014,7 @@ Term::cin >> result_combination_confirmation;
 if (result_combination_confirmation == "y")
 
 {
-std::string system_call = "python \
-mp_file_combiner.py " + first_verse_id + " " + last_verse_id;
+std::string system_call = "./tttb_py_complement mpfc " + verse_ids;
 
 try
 {system(system_call.c_str());
