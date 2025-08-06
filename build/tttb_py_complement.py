@@ -17,7 +17,7 @@
 # 
 # This script takes two arguments: (1) a 'category' argument that specifies which of the three sets of code to run, and a 'second_arg' argument that allows the user to customize how two of these scripts will run.
 
-# In[1]:
+# In[76]:
 
 
 import time
@@ -41,7 +41,7 @@ sp_visualizations_folder = '../Visualizations/Single_Player/'
 # 
 # This code is based on Gustavo Bezerra's answer at https://stackoverflow.com/a/39662359/13097194 .
 
-# In[2]:
+# In[77]:
 
 
 notebook_exec = False
@@ -54,10 +54,10 @@ except:
     pass
 
 notebook_exec
-    
 
 
-# In[3]:
+
+# In[78]:
 
 
 if notebook_exec == False:
@@ -78,13 +78,13 @@ if notebook_exec == False:
     category = args.category
     second_arg = args.second_arg
 else:
-    category = 'mpv'
+    category = 'spv'
     second_arg = 'y'
 
 category, second_arg
 
 
-# In[4]:
+# In[79]:
 
 
 ## Assigning more intuitive names to this second argument for 
@@ -121,7 +121,7 @@ elif category == 'mpfc':
 # 
 # **Important: if a player has not completed all of the tests specified by the first_verse_id and last_verse_id arguments, he/she will be excluded from the combined file!**
 
-# In[5]:
+# In[80]:
 
 
 if category == 'mpfc':    
@@ -140,7 +140,7 @@ if category == 'mpfc':
     mp_test_result_files.sort()
 
 
-# In[6]:
+# In[81]:
 
 
 if category == 'mpfc':
@@ -151,7 +151,7 @@ if category == 'mpfc':
 'Marathon_Mode', 'Player', 'Mode', 'Tag_1', 'Tag_2', 'Tag_3', 'Notes']
 
 
-# In[7]:
+# In[82]:
 
 
 if category == 'mpfc':
@@ -159,10 +159,10 @@ if category == 'mpfc':
     # to each player's name, thus helping distinguish multiple players
     # who happen to have the same name (as long as those duplicate names
     # aren't contained in the same source file).
-    
+
     df_result_list = [] # Creating a list of DataFrames, one for each
     # file, that will ultimately get converted into a single DataFrame
-    
+
     # Processing each file within mp_test_result_folder_path:
     for filename in mp_test_result_files:
         # Reading in the first row of the DataFrame in order to check whether
@@ -183,18 +183,18 @@ if category == 'mpfc':
             # mp_test_result_headers to the 'header' argument so that they can 
             # be used as header values.
             names_arg = mp_test_result_headers
-        
-        
+
+
         # Now that we know what headers to use within our read_csv call,
         # we can import the entire dataset:
-        
+
         df = pd.read_csv(mp_test_result_folder_path + filename,
                         names = names_arg)
-    
+
         # Seeing which players are present in the file:
         player_list = df['Player'].unique()
         player_list.sort()
-    
+
         if detect_verses_from_first_player == True:
             # In this case, the first and last verses typed by the
             # first player within the first file will be used as 
@@ -216,14 +216,14 @@ the starting and ending verse IDs, respectively. These IDs are based \
 on the verses typed by {player_list[0]} within {filename}.")
             detect_verses_from_first_player = False # Now that we've 
             # retrieved the verse IDs we need, we can set this flag to False.
-            
-        
+
+
         # Filtering the DataFrame to only include tests that fall within
         # the first_verse_id and last_verse_id bounds defined earlier:
-    
+
         df.query("Verse_ID >= @first_verse_id & Verse_ID <= @last_verse_id",
                 inplace = True)
-    
+
         # Checking whether each player completed the range of tests
         # that starts at first_verse_id and ends at last_verse_id:
         # (Any player that did not complete all of these tests will be 
@@ -235,50 +235,50 @@ on the verses typed by {player_list[0]} within {filename}.")
 the tests between {first_verse_id} and {last_verse_id}; thus, this player \
 will be excluded from the combined dataset.")
                 df.query("Player != @player", inplace = True)
-                   
-        
+
+
         # Making sure the tests are sorted in chronological order:
         # (We'll use Unix time here to prevent time zone differences from
         # affecting this sort.)
         df = df.sort_values(
             'Unix_Test_Start_Time').reset_index(drop=True).copy()
-        
-    
+
+
         # Adding numerical prefixes to each player's name in order to help 
         # differentiate between two players who happen to have the same name:
         for player in player_list:
             df['Player'] = df['Player'].replace(
                 {player:str(player_count)+'_'+str(player)}).copy()
             player_count += 1
-        
+
         # Replacing existing Tag_1 and Tag_2 values with 
         # a standardized set of values:
         # (This step is necessary because single-player files will likely have 
         # different tag values than multiplayer ones.)
         # As a reminder, tags 1, 2, and 3 normally refer to rounds,
         # tests within rounds, and player-specific test numbers, respectively.
-        
+
         df['Tag_1'] = 1 # We'll treat this multiplayer game as having just one
         # round (which would be the case for any players who completed these
         # tests on their own)
-        
+
         df['Tag_3'] = df.groupby('Player')['WPM'].transform('cumcount') + 1
-        
+
         # Because this game has only one round, tags 2 and 3 will have the 
         # same value.
-        
+
         df['Tag_2'] = df['Tag_3'].copy()
         # Storing the original filename within the 'Notes' field:
         df['Notes'] = filename
-    
-        
+
+
         df_result_list.append(df)
-    
+
     # Combining all of these results into a single DataFrame:
     df_combined = pd.concat([df for df in df_result_list])
     # Sorting the tests by chronological order so that we can assign
     # accurate Test_Number and Within_Session_Test_Number values:
-    
+
     df_combined = df_combined.sort_values(
         'Unix_Test_Start_Time').reset_index(drop=True).copy()
     # We'll treat all of the races as occurring within the same session.
@@ -293,7 +293,7 @@ will be excluded from the combined dataset.")
 # multiplayer results), followed by tthe regular '_test_results.csv'
 # suffix for test result files.)
 
-# In[8]:
+# In[83]:
 
 
 if category == 'mpfc':
@@ -305,7 +305,7 @@ if category == 'mpfc':
     df_combined_filename
 
 
-# In[9]:
+# In[84]:
 
 
 if category == 'mpfc':
@@ -313,7 +313,7 @@ if category == 'mpfc':
                   index = False)
 
 
-# In[10]:
+# In[85]:
 
 
 if category == 'mpfc':
@@ -332,7 +332,7 @@ file is available at ../Files/Multiplayer/{df_combined_filename}.")
 
 # ## Multiplayer visualizations script
 
-# In[11]:
+# In[86]:
 
 
 if category == 'mpv':
@@ -360,7 +360,7 @@ if category == 'mpv':
         # to analyze out of the Files/Multiplayer/ folder.)
         test_results_file = [file for file in os.listdir(mp_results_folder) if 
         (test_results_timestamp in file) & ('test_results' in file)][0]
-        
+
         # Creating a shortened version of this string that doesn't have
         # the 'test_results.csv' component at the end: 
         # (This shortened version will serve as the initial component
@@ -371,7 +371,7 @@ if category == 'mpv':
     df = pd.read_csv(mp_results_folder+test_results_file)
 
 
-# In[12]:
+# In[87]:
 
 
 if category == 'mpv':
@@ -384,11 +384,11 @@ if category == 'mpv':
     # Making sure that the results are stored in the order that they were
     # typed:
     df.sort_values('Game test number', inplace = True)
-    
+
     # Calculating cumulative WPM values:
     df['Cumulative WPM'] = (df.groupby('Player')['WPM'].transform(
     'cumsum')) / df['Player test number']
-    
+
     df['Best_WPM_for_Test'] = df.groupby(
         'Player test number')['WPM'].transform('max')
     df['Player had best WPM for this test'] = np.where(
@@ -399,7 +399,7 @@ if category == 'mpv':
 # 
 # (This will make it easier to produce a graph that uses different line dash types to differentiate between cumulative and test-specific WPM values.)
 
-# In[13]:
+# In[88]:
 
 
 if category == 'mpv':
@@ -412,7 +412,7 @@ if category == 'mpv':
     # within df.
     df_wpm_type_melt['WPM Type'] = df_wpm_type_melt['WPM Type'].replace(
     {'WPM':'Test WPM'})
-    
+
     df_wpm_type_melt
 
     fig_wpm_by_player = px.line(df_wpm_type_melt, 
@@ -432,21 +432,21 @@ Player_And_Test.html',
 
 # Calculating mean WPMs by player and round as well as overall WPMs:
 
-# In[14]:
+# In[89]:
 
 
 if category == 'mpv':
     df_mean_wpm_by_player_and_round = df.pivot_table(
     index = ['Player', 'Round'], values = 'WPM', 
                    aggfunc = 'mean').reset_index()
-    
+
     # Adding overall WPMs for each player to the bottom of this DataFrame:
-    
+
     df_mean_wpm_by_player = df.pivot_table(
     index = 'Player', values = 'WPM', 
                    aggfunc = 'mean').reset_index()
     df_mean_wpm_by_player['Round'] = 'Overall'
-    
+
     df_mean_wpm_by_player_and_round = pd.concat([
         df_mean_wpm_by_player_and_round, 
         df_mean_wpm_by_player]).reset_index(
@@ -484,7 +484,7 @@ By_Player_And_Round.html',
     # fig_mean_wpm_by_player_and_round
 
 
-# In[15]:
+# In[90]:
 
 
 if category == 'mpv':
@@ -506,7 +506,7 @@ wins_by_player.html', include_plotlyjs = 'cdn')
     # fig_wins
 
 
-# In[16]:
+# In[91]:
 
 
 if category == 'mpv':
@@ -527,7 +527,7 @@ highest_wpm_by_player.html', include_plotlyjs = 'cdn')
     # fig_highest_wpm
 
 
-# In[17]:
+# In[92]:
 
 
 if category == 'mpv':
@@ -541,14 +541,14 @@ if category == 'mpv':
 
 # ### Analyzing test result data:
 
-# In[18]:
+# In[93]:
 
 
 if category == 'spv': 
     df_tr = pd.read_csv('../Files/test_results.csv') # tr = 'test results'
-    
+
     # Converting start/end timestamps to DateTime values:
-    
+
     for col in ['Local_Test_Start_Time', 'Local_Test_End_Time']:
         df_tr[col] = pd.to_datetime(df_tr[col])
     # Ensuring the tests are being displayed in chronological order:
@@ -556,12 +556,12 @@ if category == 'spv':
     # multiplayer results into his/her single-player file.)
     # (This will help ensure that the 'chronological test number' values 
     # that we're about to create are accurate.)
-    
+
     df_tr = df_tr.sort_values(
         'Local_Test_Start_Time').reset_index(drop=True).copy()
-    
+
     df_tr['Chronological test number'] = df_tr.index+1
-    
+
     df_tr
 
 
@@ -569,7 +569,7 @@ if category == 'spv':
 # 
 # (The following approach uses a combination of np.where() and cumsum() to create these numbers. I imagine that this approach is faster than is looping through the DataFrame to assign them, but I could be wrong.)
 
-# In[19]:
+# In[94]:
 
 
 if category == 'spv': 
@@ -590,7 +590,7 @@ if category == 'spv':
 
 # Calculating various timing statistics that will prove useful for endurance-related analyses:
 
-# In[20]:
+# In[95]:
 
 
 if category == 'spv': 
@@ -609,7 +609,7 @@ if category == 'spv':
             f'{time_type} Minute'] // 15 + 1
         df_tr[f'{time_type} 10-Minute Block'] = df_tr[
             f'{time_type} Minute'] // 10 + 1
-    
+
     # Creating columns that will store unique starting hours and
     # 30/15/10-minute blocks:
     df_tr['Unique Hour'] = df_tr['Start Date'].astype(
@@ -618,8 +618,8 @@ if category == 'spv':
         df_tr[f'Unique {block}-Minute Block'] = df_tr[
             'Unique Hour'] + '_' + df_tr[
             f'Start {block}-Minute Block'].astype('str')
-    
-    
+
+
     df_tr.head(5)
 
 
@@ -627,7 +627,7 @@ if category == 'spv':
 # 
 # (This information will be helpful for calculating endurance-based statistics.)
 
-# In[21]:
+# In[96]:
 
 
 if category == 'spv': 
@@ -641,7 +641,7 @@ if category == 'spv':
 # 
 # In the meantime, I've commented out this code so that it won't cause performance issues going forward.
 
-# In[22]:
+# In[97]:
 
 
 # df_tr_condensed = df_tr[['Unix_Test_Start_Time', 
@@ -650,7 +650,7 @@ if category == 'spv':
 # alternative engine options, but unfortunately, that wasn't the case.
 
 
-# In[23]:
+# In[98]:
 
 
 # for col_seconds_pair in col_seconds_pair_list:
@@ -666,7 +666,7 @@ if category == 'spv':
 
 # Note: I thought the following approach might actually be faster than the above option, as it only requires a single loop through the whole DataFrame. However, I found it to take a bit longer than the previous method.
 
-# In[24]:
+# In[99]:
 
 
 # for col in ['characters_typed_in_next_hour',
@@ -677,14 +677,14 @@ if category == 'spv':
 # for i in range(len(df_tr)):
 #     start_time = df_tr.iloc[i]['Unix_Test_Start_Time'].astype(
 #         'int64')
-    
+
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #         'characters_typed_in_next_hour')] = df_tr[(
 #         df_tr[
 #         'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #             'Unix_Test_End_Time'] 
 #         < (start_time + 3600))]['Characters'].sum()
-    
+
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #         'characters_typed_in_next_30_minutes')] = df_tr[(
 #         df_tr[
@@ -698,17 +698,17 @@ if category == 'spv':
 #             'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #                 'Unix_Test_End_Time'] 
 #             < (start_time + 900))]['Characters'].sum()
-    
+
 #     df_tr.iloc[i, df_tr.columns.get_loc(
 #             'characters_typed_in_next_10_minutes')] = df_tr[(
 #             df_tr[
 #             'Unix_Test_Start_Time'] >= start_time) & (df_tr[
 #                 'Unix_Test_End_Time'] 
 #             < (start_time + 600))]['Characters'].sum()
-            
 
 
-# In[25]:
+
+# In[100]:
 
 
 # df_tr
@@ -716,7 +716,7 @@ if category == 'spv':
 
 # ### WPM results by test:
 
-# In[26]:
+# In[101]:
 
 
 if category == 'spv': 
@@ -727,20 +727,26 @@ if category == 'spv':
                                include_plotlyjs = 'cdn')
 
 
-# ### Average WPM by Tag 1 values:
+# ### Average WPM by Tag 1, Tag 2, and Tag 3 values:
 
-# In[27]:
+# In[111]:
 
 
 if category == 'spv': 
-    df_wpm_by_tag_1 = df_tr.pivot_table(index = 'Tag_1', values = 'WPM',
-                                     aggfunc = 'mean').reset_index()
-    df_wpm_by_tag_1
-
-    fig_wpm_by_tag_1 = px.bar(df_wpm_by_tag_1, x = 'Tag_1', y = 'WPM',
-                             title = 'Mean WPM by Tag_1 value')
-    fig_wpm_by_tag_1.write_html(f'{sp_visualizations_folder}/Mean_WPM_\
-by_Tag_1.html', include_plotlyjs = 'cdn')
+    for tag in ['Tag_1', 'Tag_2', 'Tag_3']:
+        df_wpm_by_tag = df_tr.pivot_table(
+            index = tag, values = ['WPM', 'Chronological test number'],
+            aggfunc = {'WPM':'mean',
+            'Chronological test number':'count'}).reset_index().rename(
+            columns = {'Chronological test number':'Tests'})
+        if 'WPM' in df_wpm_by_tag: # If there are no Tag_1 values within
+            # the DataFrame, this will return False, thus preventing the
+            # following line from raising an error.
+            fig_wpm_by_tag = px.bar(df_wpm_by_tag, x = tag, y = 'WPM',
+                                 title = f'Mean WPM by {tag} value',
+                                   hover_data = 'Tests')
+            fig_wpm_by_tag.write_html(f'{sp_visualizations_folder}/Mean_\
+WPM_by_{tag}.html', include_plotlyjs = 'cdn')
 
 
 # ### Creating endurance-related charts:
@@ -763,7 +769,7 @@ by_Tag_1.html', include_plotlyjs = 'cdn')
 #     y = col,
 #     title = 'Most ' + col,
 #     hover_data = ['Chronological test number', 'Local_Test_Start_Time'])
-    
+
 #     fig_endurance.write_html('Single_Player/Endurance_Top_50_rolling_'+col.replace(
 #         ' ', '_')+'.html', 
 #     include_plotlyjs = 'cdn')
@@ -787,13 +793,13 @@ if category == 'spv':
         aggfunc = 'sum').reset_index().sort_values(
         'Characters', ascending = False).reset_index(drop=True).head(50)
         df_endurance['Rank'] = (df_endurance.index + 1)
-        
+
         fig_endurance = px.bar(
         df_endurance, x = f'Unique {time_category}', 
         y = 'Characters',
         title = 'Most Characters Typed By ' + time_category,
         hover_data = 'Rank')
-        
+
         fig_endurance.write_html(
         f'{sp_visualizations_folder}Endurance_Top_50_\
 Clock_'+time_category.replace(' ', '_')+'.html', 
@@ -935,7 +941,7 @@ rate bin'] = df_tr.groupby(
            title = 'Rolling 10-Race WPMs by Error + Backspace\
 Rate Bin').update_layout(
         yaxis_title = '10-race rolling WPM')
-    
+
     fig_rolling_wpm_by_error_rate.write_html(
     f'{sp_visualizations_folder}/Mean_Rolling_WPM_\
 by_accuracy_bin.html', include_plotlyjs = 'cdn')
