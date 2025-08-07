@@ -18,11 +18,19 @@ set(CMAKE_CXX_STANDARD 23)
 #set(CMAKE_C_COMPILER /opt/gcc-15/bin/gcc)
 #set(CMAKE_CXX_COMPILER /opt/gcc-15/bin/g++)
 
+# Trying to get CMake to use/build static rather than shared libraries
+# (as part of my process for debugging 'can't find shared library errors'
+# when the program is run on other computers:
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+# The following code came from the cpp-terminal library's CMakeLists.txt file. (Note that I changed the value for this option in that file for Linux from ON to OFF.)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 # The above line is based on:
 # https://stackoverflow.com/a/42842447/13097194
 # I downloaded and compiled both of the following libraries before incorporating them into my project.
-add_subdirectory(/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/3rd_party_libraries/csv-parser /home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/3rd_party_libraries/csv-parser_subdiroutput)
-add_subdirectory(/home/kjb3/Downloads/cpp-terminal /home/kjb3/Downloads/cpp-terminal_subdiroutput)
+# Note: it appears that these paths should be relative to the folder in which you were in when
+# calling CMakeLists.txt (rather than to the folder in which CMakeLists.txt is located.)
+add_subdirectory(3rd_party_libraries/csv-parser 3rd_party_libraries/csv-parser_subdiroutput)
+add_subdirectory(3rd_party_libraries/cpp-terminal 3rd_party_libraries/cpp-terminal_subdiroutput)
 # Note RE subdirectory output: https://stackoverflow.com/a/35260629/13097194
 # add_library(tttbmodules)
 # target_sources (tttbmodules
@@ -38,3 +46,10 @@ target_link_libraries(tttb csv cpp-terminal)
 #target_link_libraries(tttb csv DataFrame::DataFrame)
 # target_compile_features(tttb PRIVATE cxx_std_23)
 # Based on https://stackoverflow.com/a/46809634/13097194
+
+# The following installation code is based on
+# https://cmake.org/cmake/help/latest/guide/tutorial/Packaging%20an%20Installer.html
+#include(InstallRequiredSystemLibraries)
+#set(CPACK_GENERATOR "TGZ")
+#set(CPACK_SOURCE_GENERATOR "TGZ")
+#include(CPack)

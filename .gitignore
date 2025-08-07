@@ -78,3 +78,5 @@ build/mp_file_combiner.ipynb
 build/pyinstaller_commands.txt
 *older_copies*
 Releases/
+3rd_party_libraries
+dist/
