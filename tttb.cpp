@@ -407,7 +407,7 @@ WPM data. */
     // a word:
     for (int i = 0; i < verse.size(); i++)
     {
-        if (isalnum(verse[i] != 0))
+        if (isalnum(verse[i]) != 0)
             first_character_index = i;
         newword = verse[i];
         break;
@@ -695,11 +695,22 @@ the space bar to begin the typing test." << std::endl;
     // related functions. 
     Term::cout << cursor_reposition_code << "\033[J" << std::endl;
 
+    // Determining the start time of the test in system clock form:
+    // (Note: Linux allowed the start_time created by 
+    // std::chrono::high_resolution_clock::now() to get converted
+    // to unix_test_start_time, but Windows didn't--hence my addition
+    // of code to derive unix_test_start_time from
+    // system_clock instead.
+    // This code was based on 
+    // https://en.cppreference.com/w/cpp/chrono/system_clock/to_time_t.html 
+    // and https://en.cppreference.com/w/cpp/chrono/system_clock/now.html .
+    std::time_t unix_test_start_time = std::chrono::
+        system_clock::to_time_t(std::chrono::system_clock::now());
     // Starting our timing clock:
     // (This code was based on p. 1010 of The C++ Programming Language,
     // 4th edition.)
     auto start_time = std::chrono::high_resolution_clock::now();
-
+    
     /* Checking to see whether the first character begins
     one of the words in word_map: (This will generally, but not
     always be the case.)
@@ -1004,14 +1015,14 @@ word_map[latest_first_character_index].error_and_backspace_rate =
     // (This code was based in part on the examples found at
     // https://en.cppreference.com/w/cpp/chrono/duration .)
     auto end_time = std::chrono::high_resolution_clock::now();
+    std::time_t unix_test_end_time = std::chrono::
+        system_clock::to_time_t(std::chrono::system_clock::now());
     auto test_seconds = std::chrono::duration<double>(
                             end_time - start_time)
                             .count();
     /* The following time variable initialization code was based in part
     on https://en.cppreference.com/w/cpp/chrono/system_clock/now.html . */
 
-    std::time_t unix_test_start_time = std::chrono::
-        system_clock::to_time_t(start_time);
     long unix_test_start_time_as_long = long(unix_test_start_time);
     // Creating a string version of this timestamp that shows
     // the user's local time:
@@ -1042,8 +1053,6 @@ word_map[latest_first_character_index].error_and_backspace_rate =
 
     // Performing similar steps on the end-of-test timestamp:
 
-    std::time_t unix_test_end_time = std::chrono::
-        system_clock::to_time_t(end_time);
     long unix_test_end_time_as_long = long(unix_test_end_time);
     char end_strftime_container[25];
     std::strftime(end_strftime_container,
@@ -2311,10 +2320,8 @@ void run_multiplayer_game()
     // will be incorporated into the name of the file that will store
     // its results):
 
-    auto multiplayer_start_time = std::chrono::
-        high_resolution_clock::now();
     std::time_t unix_multiplayer_start_time = std::chrono::
-        system_clock::to_time_t(multiplayer_start_time);
+        system_clock::to_time_t(std::chrono::system_clock::now());
     char multiplayer_start_container[25]; // This value could likely
     // be reduced now that I've simplified the formatting instructions
     // (more on this below).

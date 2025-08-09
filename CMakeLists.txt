@@ -27,10 +27,9 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 # The above line is based on:
 # https://stackoverflow.com/a/42842447/13097194
 # I downloaded and compiled both of the following libraries before incorporating them into my project.
-# Note: it appears that these paths should be relative to the folder in which you were in when
-# calling CMakeLists.txt (rather than to the folder in which CMakeLists.txt is located.)
-add_subdirectory(3rd_party_libraries/csv-parser 3rd_party_libraries/csv-parser_subdiroutput)
-add_subdirectory(3rd_party_libraries/cpp-terminal 3rd_party_libraries/cpp-terminal_subdiroutput)
+
+add_subdirectory(/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/csv-parser /home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/csv-parser_subdiroutput)
+add_subdirectory(/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/cpp-terminal /home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/cpp-terminal_subdiroutput)
 # Note RE subdirectory output: https://stackoverflow.com/a/35260629/13097194
 # add_library(tttbmodules)
 # target_sources (tttbmodules
