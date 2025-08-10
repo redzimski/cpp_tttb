@@ -46,42 +46,7 @@ Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
-    1. Currently, your terminal isn't accepting input within Python
-    after being called by std::system(). This appears to be due
-    to an issue with cpp-terminal (since you *can* enter input
-    when calling these files within a program that doesn't use
-    the the cpp-terminal library. Therefore, try the following 
-    solutions in the following order:
-
-    a. Go back to your original setup in which you could pass
-    arguments to the Python file, thus preventing you from having
-    to use input() within the Python scripts. (See whether this
-    works when the files are converted to executables; online
-    comments indicate that it should.)
-
-    b. Update your multiplayer analysis script so that it doesn't
-    request the timestamp, but instead simply modifies the most 
-    recently updated file. (Users could still update previous
-    files by making a minor change to the .csv file and then
-    revising it, thus resetting the last-modified time.) Instruct
-    users to call the multiplayer file combination script by itself
-    so that this issue gets bypassed altogether. (The inputs do work
-    fine when the Pyinstaller-generated executables are called
-    by themselves.)
-
-    c. Keep the current input() setup for the multiplayer 
-    visualizations file, but ask users to call it oustide of the
-    C++ program.
-
-    (NOTE: if you go with method a, you'll probably want to 
-    re-import your code for specifying arguments within C++ for
-    your multiplayer combination files and your multiplayer
-    visualizations script. This can be found within tttb_old_14.cpp.
-    You'll also want to add back the argparse and 
-    notebook-run-checking code that previously existed within your
-    multiplayer visualizations and multiplayer file 
-    combiner scripts; this can be found within your most recent
-    GitHub deployment.
+    1. 
 
     2. Update your code as needed so that the Python commands (both
     within the C++ file and the multiplayer-file-combination Python 
@@ -161,6 +126,33 @@ To dos (very incomplete list)!
 #include "cpp-terminal/tty.hpp"
 #include "cpp-terminal/version.hpp"
 using namespace csv;
+
+// Storing codes that correspond to 16 different background 
+// colors within the ANSI escape code system:
+// This code is based on the hello world example at
+// https://github.com/jupyter-xeus/cpp-terminal and on the 
+// ANSI escape sequence color reference at
+// https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit .
+std::vector<std::string> background_color_codes {
+/*Bright Red*/"101", /*Bright Green*/ "102", 
+/*Bright Blue*/ "104", /*Bright Yellow*/ "103", 
+/*Bright Magenta*/ "105", /*Bright Cyan*/ "106", 
+/*Bright Black*/"100", /*Bright White*/ "107", 
+/*Red*/ "41", /*Green*/ "42", 
+/*Blue*/ "44", /*Yellow*/ "43", 
+/*Magenta*/ "45", /*Cyan*/ "46", 
+/*Black*/ "40", /*White*/ "47"};
+
+// Specifying prefixes and suffixes that will precede and proceed
+// these background color codes, respectitvely:
+std::string background_color_prefix = "\033[37;"; // 
+// The ANSI escape code for white foreground text. 
+std::string background_color_suffix = "m    \033[0m"; 
+// Four spaces 
+// (which will give the background color space to appear) 
+// followed by an ANSI escape code that restores default color 
+// settings)
+
 
 std::string all_verses_typed_message = "All verses have already \
 been typed at least once! try another choice (such as i for a \
@@ -1831,7 +1823,7 @@ completed so far." << std::endl;
 }
 
 
-void run_single_player_game()
+void run_single_player_game(std::string py_complement_name)
 {
 
     long test_number = count_sp_test_results();
@@ -2019,7 +2011,13 @@ so far this session. Your mean WPM over the "
                 Term::cout << "Your mean WPM over your last 10 \
 races is " << last_10_wpm_mean << "." << std::endl;
             }
-
+            // The following code displays a different color after
+            // each test. (There's no real purpose for doing so;
+            // I just thought it would be nice to add a bit more
+            // color to the terminal display!)
+            Term::cout << background_color_prefix + 
+        background_color_codes[within_session_test_number % 16] +
+        background_color_suffix << std::endl;
             Term::cout << "Enter 'n' to type the next untyped verse; \
 'c' to type the next verse; and 'i' to type a specific verse ID.\n\
 To enter 'untyped marathon mode' \
@@ -2223,6 +2221,13 @@ Term::cin >> sp_stats_update_response;
 
 if (sp_stats_update_response == "y")
 {
+
+// In order to determine how to write the upcoming system call,
+// we'll need to see whether our code is running on
+// Windows. 
+
+std::string system_call = py_complement_name + " spv spare_arg"; 
+
 try
 {
 // Only one argument (spv) needs to be passed to 
@@ -2231,7 +2236,10 @@ try
 // pass a second argument to it anyway. (There's probably
 // a way to eliminate the need for this second argument,
 // but it's past midnight and this approach will work for now. :)
-std::system("./tttb_py_complement spv spare_arg");
+
+// Converting this string to a C-style string, then passing
+// it to system():
+std::system(system_call.c_str());
 }
 catch (...)
 {Term::cout << "Unable to run system command." << std::endl;}
@@ -2308,7 +2316,7 @@ return std::move(player_wpm_pairs);
 }
 
 
-void run_multiplayer_game()
+void run_multiplayer_game(std::string py_complement_name)
 {
 
     long test_number = 0; // Since there are no previous 
@@ -2375,9 +2383,11 @@ You may now enter the next player's name."
     Term::cout << "Here are the " << player_names.size() << " players \
 who will be joining this game:"
                << std::endl;
-    for (auto& player_name : player_names)
+    for (int i = 0; i < player_names.size(); i++)
     {
-        Term::cout << player_name << std::endl;
+        Term::cout << background_color_prefix + 
+        background_color_codes[i % 16] +
+        background_color_suffix << player_names[i] << std::endl;
     }
 
     Term::cout << "Next, enter two integers. These will represent \
@@ -2459,10 +2469,13 @@ not have any spaces." << std::endl;
     // a combined multiplayer response file with the same
     // initial timestamp will get saved to the file list. (This
     // is very unlikely, but better safe than sorry!)
-    {multiplayer_filename_string = "CMR1";}
-    
+    {
     Term::cout << "In order to prevent another file from getting \
-overwritten, 'CMR1' will be used in place of 'CMR'." << std::endl;
+    overwritten, 'CMR1' will be used in place of 'CMR'." << std::endl;
+    multiplayer_filename_string = "CMR1";
+    }
+    
+
 
 
     
@@ -2595,11 +2608,26 @@ starting_verse_index_to_type + (current_round - 1) * (
                     (current_round - 1) * (tests_per_round) + (
                     current_test_within_round - 1)];
                 }
+
+        bool completed_test = false;
+        while (completed_test == false)
+        {
+        // Note: I added in background-color codes below to help
+        // highlight when a new player's session has begun.
+        // (I also added in color codes for rounds and within-round
+        // tests in order to liven up the display a little. :) 
                 Term::cout << "Here are the details for the \
-following test:\nRound: " << current_round
-                           << "\nPlayer: " << mgcf.player
-                           << "\nTest within round: " 
-                           << current_test_within_round
+following test:\nRound: " << background_color_prefix + 
+        background_color_codes[(current_round -1) % 16] +
+        background_color_suffix << " " << current_round
+                           << "\nPlayer: " << 
+        background_color_prefix + background_color_codes[
+        player_index % 16] + background_color_suffix << " " <<
+                           mgcf.player
+                           << "\nTest within round: " << 
+        background_color_prefix + background_color_codes[
+        (current_test_within_round -1) % 16] + background_color_suffix
+                           << " " << current_test_within_round
                            << std::endl;
     // The following keypress prompt was added in so that players
     // will be able to view information about WPM stats and
@@ -2624,24 +2652,29 @@ continue. (The test won't start just yet.)" << std::endl;
                 break;
             }
         };
-                bool completed_test = run_test(
+
+                // The following loop will continue until a player
+                // has successfully completed a test.
+
+                    completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                     mgcf.player, mgcf.mode, mgcf.tag_1, mgcf.tag_2, 
                     mgcf.tag_3, mgcf.notes, test_number, 
-                    within_session_test_number, false, kptrv); 
-                    // The 'false' argument sets
-                    // the 'allow_quitting' parameter to false,
-                    // thus preventing players from exiting
-                    // a test via Ctrl + C.
-                if (completed_test)
-                {
+                    within_session_test_number, true, kptrv); 
+                    // The 'true' argument here governs the 
+                    // 'allow_quitting' parameter. I had
+                    // originally set it to False, but realized
+                    // during testing that this could cause 
+                    // major issues (i.e. if a player begins a 
+                    // test by accident and isn't ready to complete
+                    // it.)
+                }
                     // Storing the player's WPM result (which can be
                     // identified as the most recent WPM entry
                     // within trrv) within the WPM vector corresponding
                     // to his/her name in mp_results_map:
                     mp_results_map[mgcf.player].push_back(
                         trrv.back().wpm);
-                }
             }
         // Calculating and reporting average WPMs for each player
         // thus far:
@@ -2723,17 +2756,15 @@ std::string mp_stats_update_response = "";
 Term::cin >> mp_stats_update_response;
 
 if (mp_stats_update_response == "y")
+{
 
-{std::string system_call = ("./tttb_py_complement mpv " 
-+ multiplayer_start_time_as_string);
+std::string system_call = (
+    py_complement_name + " mpv " + multiplayer_start_time_as_string);
 // For security purposes, only the timestamp (rather than
 // the user-provided string that makes up part of the filename)
 // will get passed to the following system() call. (The 
 // Python script will be able to locate the correct multiplayer
 // results file based on this timestamp alone.)
-
-// Converting this string to a C-style string, then passing
-// it to system():
 
 try
 {system(system_call.c_str());
@@ -2994,7 +3025,7 @@ not modified." << std::endl;
 
 }
 
-void combine_multiplayer_results()
+void combine_multiplayer_results(std::string py_complement_name)
 // This function calls a Python script that (1) combines multiple
 // sets of multiplayer results into the same file, then (2)
 // calls another Python script to create visualizations of those
@@ -3021,7 +3052,7 @@ Term::cin >> result_combination_confirmation;
 if (result_combination_confirmation == "y")
 
 {
-std::string system_call = "./tttb_py_complement mpfc " + verse_ids;
+std::string system_call = py_complement_name + " mpfc " + verse_ids;
 
 try
 {system(system_call.c_str());
@@ -3044,9 +3075,29 @@ Term::cout << std::endl;
 
 int main()
 {
-    /* The following code was based in part on
-    https://github.com/jupyter-xeus/cpp-terminal/blob/
-    master/examples/events.cpp . */
+
+
+// Determining which executable command to pass to system calls:
+// One name should work for both Linux and OSX; the other name
+// should work for Windows.
+
+std::string py_complement_name = "";
+#ifdef _Win32  // From
+// https://www.geeksforgeeks.org/cpp/writing-os-independent-code-cc/
+{py_complement_name = "tttb_py_complement.exe";}
+#else
+{py_complement_name = "./tttb_py_complement";}
+#endif
+
+
+
+    // Printing a simple graphic (which will likely look different
+    // on different terminals) along with a welcome message:
+    for (int i = 0; i < background_color_codes.size(); i++)
+    {Term::cout << background_color_prefix + 
+    background_color_codes[i] + background_color_suffix;}
+    Term::cout << std::endl << "Welcome to the C++ Edition of \
+Type Through the Bible!" << std::endl;
 
     std::string game_exit_message = "Exiting Type Through \
 the Bible.";
@@ -3055,6 +3106,10 @@ the Bible.";
     while (gameplay_option != 'e')
     {
     // Initializing our terminal:
+    /*The following code was based in part on
+    https://github.com/jupyter-xeus/cpp-terminal/blob/
+    master/examples/events.cpp .*/
+
     // (I moved this code within the while loop so that the terminal
     // can get reinstated following certain system() calls
     // that print out Python-based output.)
@@ -3068,12 +3123,15 @@ the Bible.";
 can't catch user input. Exiting...");
     }
 
-        Term::cout << "Welcome to the C++ Edition of Type Through \
-the Bible! Enter 's' or 'm' for single-player or multiplayer mode, \
-respectively.\nTo import multiplayer results into your single-player \
-files, enter 'r.'\nTo combine multiplayer results within \
-..Files/MP_Test_Result_Files_To_Combine into a single file, then \
-analyze them, enter 'c'.\nTo exit the game, press 'e.'" << std::endl;
+
+
+
+Term::cout << "\nEnter 's' or 'm' for single-player or \
+multiplayer mode, respectively.\nTo import multiplayer results \
+into your single-player files, enter 'r.'\nTo combine multiplayer \
+results within ..Files/MP_Test_Result_Files_To_Combine into a single \
+file, then analyze them, enter 'c'.\nTo exit the game, \
+press 'e.'" << std::endl;
 
         Term::cin >> gameplay_option;
         switch (gameplay_option)
@@ -3081,13 +3139,13 @@ analyze them, enter 'c'.\nTo exit the game, press 'e.'" << std::endl;
         {
         case 's':
         {
-            run_single_player_game();
+            run_single_player_game(py_complement_name);
             continue;
         }
 
         case 'm':
         {
-            run_multiplayer_game();
+            run_multiplayer_game(py_complement_name);
             continue;
         }
 
@@ -3106,7 +3164,7 @@ analyze them, enter 'c'.\nTo exit the game, press 'e.'" << std::endl;
 
         case 'c':
         {
-            combine_multiplayer_results();
+            combine_multiplayer_results(py_complement_name);
             continue;
         }
 
