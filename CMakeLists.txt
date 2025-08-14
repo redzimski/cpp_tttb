@@ -12,7 +12,7 @@
 # I ended up using 
 cmake_minimum_required(VERSION 3.5)
 project(tttb)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 # set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 #set(CMAKE_C_COMPILER /opt/gcc-15/bin/gcc)
@@ -21,7 +21,7 @@ set(CMAKE_CXX_STANDARD 23)
 # Trying to get CMake to use/build static rather than shared libraries
 # (as part of my process for debugging 'can't find shared library errors'
 # when the program is run on other computers:
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+#set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # The following code came from the cpp-terminal library's CMakeLists.txt file. (Note that I changed the value for this option in that file for Linux from ON to OFF.)
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 # The above line is based on:

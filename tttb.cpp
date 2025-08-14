@@ -208,6 +208,10 @@ struct Test_Result_Row
 {
     long test_number; // Stores the total number of tests the player
     // has completed so far.
+    long session_number; // Stores the total number of 
+    // sessions the player has completed so far (e.g. the 
+    // total number of times the player has launched a 
+    // single-player game).
     int within_session_test_number; // Stores the total number of 
     // tests completed by the player during the current session.
     long unix_test_start_time;
@@ -495,7 +499,8 @@ bool run_test(
     const std::string &player, const std::string& mode, 
     const std::string &tag_1, const std::string &tag_2, 
     const std::string &tag_3, const std::string &notes, 
-    long& test_number, int& within_session_test_number, 
+    long& test_number, long& session_number, 
+    int& within_session_test_number, 
     const bool allow_quitting,
     std::vector<Keypress_Processing_Time_Row> &kptrv)
 /* This function allows the player to complete a single typing test.
@@ -1086,6 +1091,7 @@ word_map[latest_first_character_index].error_and_backspace_rate =
     {// Incrementing our overall and within-session test counters:
         test_number++;
         within_session_test_number++;
+        // Note that the session number stays the same.
 
         Term::cout << "You typed the " << verse_row.characters
                    << "-character verse \
@@ -1139,6 +1145,7 @@ including backspaces)."
         be added for the entire test.) */
         Test_Result_Row trr;
         trr.test_number = test_number;
+        trr.session_number = session_number;
         trr.within_session_test_number = within_session_test_number;
         trr.unix_test_start_time = unix_test_start_time_as_long;
         trr.local_test_start_time = local_start_time_string;
@@ -1428,6 +1435,7 @@ std::vector<Test_Result_Row> import_test_results(
         Test_Result_Row trr;
 
         trr.test_number = row["Test_Number"].get<long>();
+        trr.session_number = row["Session_Number"].get<long>();
         trr.within_session_test_number = row[
             "Within_Session_Test_Number"].get<int>();
         trr.unix_test_start_time = row[
@@ -1511,7 +1519,7 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
     auto trrv_export_start_time = std::chrono::
         high_resolution_clock::now();
 
-    // Determiing whether to clear the file to which data will
+    // Determining whether to clear the file to which data will
     // be written or append new rows to existing ones:
     // For more details on std::ios::app (which instructs the program
     // to append new lines to the end of this existing file),
@@ -1540,6 +1548,7 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
     {
     std::vector<std::string> header_row = {
         "Test_Number",
+        "Session_Number",
         "Within_Session_Test_Number",
         "Unix_Test_Start_Time",
         "Local_Test_Start_Time",
@@ -1570,6 +1579,7 @@ void export_test_results(const std::vector<Test_Result_Row> &trrv,
     {
         std::vector<std::string> cols_as_strings = {
             std::to_string(trrv[i].test_number),
+            std::to_string(trrv[i].session_number),
             std::to_string(trrv[i].within_session_test_number),
             std::to_string(trrv[i].unix_test_start_time),
             trrv[i].local_test_start_time,
@@ -1786,9 +1796,10 @@ void export_verses(const std::vector<Verse_Row> &vrv,
 }
 
 
-long count_sp_test_results()
-// This function locates the highest existing test number within
-// the test_results.csv file, then returns that number.
+std::map<std::string, long> count_sp_test_results()
+// This function locates the highest existing test and //
+// session numbers within
+// the test_results.csv file, then returns these numbers.
 // (Note: a previous version of this function simply counted the
 // number of test results; however, if rows prior to the final
 // result within that file ever got deleted, that approach could
@@ -1798,6 +1809,7 @@ long count_sp_test_results()
 {
     long test_number = 0; // This value will be updated as needed
     // to match the highest test number completed.
+    long session_number = 0;
     long tests_completed = 0; // This number may end up being
     // less than test_number if rows prior to the last row
     // within test_results.csv had gotten deleted at some point.
@@ -1808,25 +1820,41 @@ long count_sp_test_results()
     // (test_number, along with within_session_test_number, 
     // will get incremented following completed tests within
     // run_test).
+    Term::cout << "Now looping through test results." << std::endl;
     for (auto &row : reader)
     {tests_completed++;
     long row_test_number = row["Test_Number"].get<long>();
+    long row_session_number = row["Session_Number"].get<long>();
     if (row_test_number >= test_number)
-    test_number = row_test_number;}
-    Term::cout << tests_completed << " tests have been \
+    {test_number = row_test_number;}
+    if (row_session_number >= session_number)
+    {session_number = row_session_number;}
+    }
+    Term::cout << tests_completed << " tests and " << 
+    session_number << " sessions have been \
 completed so far." << std::endl;
     // For debugging:
     Term::cout << "The highest test number so far is " 
     << test_number << "." << std::endl;
 
-    return test_number;
+
+    
+    return std::map<std::string, long> {
+    {"test_number", test_number}, {"session_number", session_number}};
 }
 
 
 void run_single_player_game(std::string py_complement_name)
 {
-
-    long test_number = count_sp_test_results();
+    Term::cout << "Now calling count_sp_test_results." << std::endl;
+    std::map<std::string, long> test_and_session_numbers = 
+    count_sp_test_results();
+    long test_number = test_and_session_numbers["test_number"];
+    // Adding 1 to the session number so that it will be distinct from
+    // the previous session's number: 
+    // (test_number values will get incremented elsewhere within the 
+    // game.)
+    long session_number = test_and_session_numbers["session_number"] + 1;
     int within_session_test_number = 0;
 
 
@@ -2011,11 +2039,15 @@ so far this session. Your mean WPM over the "
                 Term::cout << "Your mean WPM over your last 10 \
 races is " << last_10_wpm_mean << "." << std::endl;
             }
-            // The following code displays a different color after
-            // each test. (There's no real purpose for doing so;
+            // The following code displays a different set of colors
+            // after each test; the patterns will repeat every
+            // 256 tests. (There's no real purpose for doing so;
             // I just thought it would be nice to add a bit more
             // color to the terminal display!)
             Term::cout << background_color_prefix + 
+        background_color_codes[
+            (within_session_test_number / 16) % 16] +
+        background_color_suffix << background_color_prefix + 
         background_color_codes[within_session_test_number % 16] +
         background_color_suffix << std::endl;
             Term::cout << "Enter 'n' to type the next untyped verse; \
@@ -2141,7 +2173,8 @@ from which to start this mode." << std::endl;
             bool completed_test = run_test(
                 vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                 gcf.player, gcf.mode, gcf.tag_1, gcf.tag_2, gcf.tag_3,
-                gcf.notes, test_number, within_session_test_number,
+                gcf.notes, test_number, session_number,
+                within_session_test_number,
                 true, kptrv);
             // The following code will exit a user out of either marathon
             // mode if he/she did not complete the most recent test.
@@ -2321,6 +2354,8 @@ void run_multiplayer_game(std::string py_complement_name)
 
     long test_number = 0; // Since there are no previous 
     // tests to account for, we can initialize this value as 0.
+    long session_number = 1; // This will always be 1 for 
+    // multiplayer games.
     int within_session_test_number = 0;
 
 
@@ -2659,7 +2694,7 @@ continue. (The test won't start just yet.)" << std::endl;
                     completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                     mgcf.player, mgcf.mode, mgcf.tag_1, mgcf.tag_2, 
-                    mgcf.tag_3, mgcf.notes, test_number, 
+                    mgcf.tag_3, mgcf.notes, test_number, session_number,
                     within_session_test_number, true, kptrv); 
                     // The 'true' argument here governs the 
                     // 'allow_quitting' parameter. I had
@@ -2786,7 +2821,7 @@ of a multiplayer results file into your main single-player results \
 (i.e. the ones stored in your Files/ folder.\nFirst, enter the name \
 of the multiplayer file timestamp and string whose data you wish \
 to import. These items can be found within your main multiplayer \
-test results file. For instance, if your full multiplayer test \
+test results folder. For instance, if your full multiplayer test \
 results filename is 20250723T224940_testmpspimport_test_results.csv, \
 enter just 20250723T224940_testmpspimport ." << std::endl; 
 
@@ -2818,8 +2853,15 @@ std::string mp_word_results_filename = (
 // test numbers to assign our files. Also note that, depending on
 // when this function was called, these test numbers might be 
 // greater than those of earlier single-player tests.)
+// We'll also import the highest session number within
+// our test result so that we can initialize these results'
+// session number as the integer one greater than that
+// number.
 
-long test_number = count_sp_test_results();
+std::map<std::string, long> test_and_session_numbers = 
+count_sp_test_results();
+long test_number = test_and_session_numbers["test_number"];
+long session_number = test_and_session_numbers["session_number"] + 1;
 
 // For debugging purposes
 // Term::cout << test_number << " tests have been completed so far." 
@@ -2922,6 +2964,7 @@ for (auto trr: original_mp_trrv)
 
         trr_for_import.test_number = (
             test_number + std::stoi(trr_for_import.tag_3));
+        trr_for_import.session_number = session_number;
         trr_for_import.within_session_test_number = std::stoi(
             trr_for_import.tag_3);
         // Now that we've utilized this tag_3 value, we can 

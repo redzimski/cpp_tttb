@@ -17,13 +17,14 @@
 # 
 # This script takes two arguments: (1) a 'category' argument that specifies which of the three sets of code to run, and a 'second_arg' argument that allows the user to customize how two of these scripts will run.
 
-# In[76]:
+# In[1]:
 
 
 import time
 start_time = time.time()
 import os
 import subprocess
+import platform
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -41,7 +42,7 @@ sp_visualizations_folder = '../Visualizations/Single_Player/'
 # 
 # This code is based on Gustavo Bezerra's answer at https://stackoverflow.com/a/39662359/13097194 .
 
-# In[77]:
+# In[2]:
 
 
 notebook_exec = False
@@ -57,7 +58,7 @@ notebook_exec
 
 
 
-# In[78]:
+# In[3]:
 
 
 if notebook_exec == False:
@@ -84,7 +85,7 @@ else:
 category, second_arg
 
 
-# In[79]:
+# In[4]:
 
 
 ## Assigning more intuitive names to this second argument for 
@@ -121,7 +122,7 @@ elif category == 'mpfc':
 # 
 # **Important: if a player has not completed all of the tests specified by the first_verse_id and last_verse_id arguments, he/she will be excluded from the combined file!**
 
-# In[80]:
+# In[5]:
 
 
 if category == 'mpfc':    
@@ -140,18 +141,19 @@ if category == 'mpfc':
     mp_test_result_files.sort()
 
 
-# In[81]:
+# In[6]:
 
 
 if category == 'mpfc':
-    mp_test_result_headers = ['Test_Number', 'Within_Session_Test_Number', 
+    mp_test_result_headers = ['Test_Number', 'Session_Number', 
+'Within_Session_Test_Number', 
 'Unix_Test_Start_Time', 'Local_Test_Start_Time', 'Unix_Test_End_Time', 
 'Local_Test_End_Time', 'Verse_ID', 'Verse_Code', 'Verse', 'Characters', 
 'WPM', 'Test_Seconds', 'Error_Rate', 'Error_and_Backspace_Rate', 
 'Marathon_Mode', 'Player', 'Mode', 'Tag_1', 'Tag_2', 'Tag_3', 'Notes']
 
 
-# In[82]:
+# In[7]:
 
 
 if category == 'mpfc':
@@ -284,6 +286,8 @@ will be excluded from the combined dataset.")
     # We'll treat all of the races as occurring within the same session.
     for column in ['Test_Number', 'Within_Session_Test_Number']:
         df_combined[column] = df_combined.index + 1
+    df_combined['Session_Number'] = 1 # This too will be made uniform 
+    # across all races.
     df_combined
 
 
@@ -293,7 +297,7 @@ will be excluded from the combined dataset.")
 # multiplayer results), followed by tthe regular '_test_results.csv'
 # suffix for test result files.)
 
-# In[83]:
+# In[8]:
 
 
 if category == 'mpfc':
@@ -305,7 +309,7 @@ if category == 'mpfc':
     df_combined_filename
 
 
-# In[84]:
+# In[9]:
 
 
 if category == 'mpfc':
@@ -313,7 +317,7 @@ if category == 'mpfc':
                   index = False)
 
 
-# In[85]:
+# In[10]:
 
 
 if category == 'mpfc':
@@ -332,7 +336,7 @@ file is available at ../Files/Multiplayer/{df_combined_filename}.")
 
 # ## Multiplayer visualizations script
 
-# In[86]:
+# In[11]:
 
 
 if category == 'mpv':
@@ -371,7 +375,7 @@ if category == 'mpv':
     df = pd.read_csv(mp_results_folder+test_results_file)
 
 
-# In[87]:
+# In[12]:
 
 
 if category == 'mpv':
@@ -399,7 +403,7 @@ if category == 'mpv':
 # 
 # (This will make it easier to produce a graph that uses different line dash types to differentiate between cumulative and test-specific WPM values.)
 
-# In[88]:
+# In[13]:
 
 
 if category == 'mpv':
@@ -432,7 +436,7 @@ Player_And_Test.html',
 
 # Calculating mean WPMs by player and round as well as overall WPMs:
 
-# In[89]:
+# In[14]:
 
 
 if category == 'mpv':
@@ -484,7 +488,7 @@ By_Player_And_Round.html',
     # fig_mean_wpm_by_player_and_round
 
 
-# In[90]:
+# In[15]:
 
 
 if category == 'mpv':
@@ -506,7 +510,7 @@ wins_by_player.html', include_plotlyjs = 'cdn')
     # fig_wins
 
 
-# In[91]:
+# In[16]:
 
 
 if category == 'mpv':
@@ -527,7 +531,7 @@ highest_wpm_by_player.html', include_plotlyjs = 'cdn')
     # fig_highest_wpm
 
 
-# In[92]:
+# In[17]:
 
 
 if category == 'mpv':
@@ -541,7 +545,7 @@ if category == 'mpv':
 
 # ### Analyzing test result data:
 
-# In[93]:
+# In[18]:
 
 
 if category == 'spv': 
@@ -565,32 +569,39 @@ if category == 'spv':
     df_tr
 
 
-# Adding session numbers to DataFrame:
+# Adding chronological session numbers to DataFrame:
 # 
 # (The following approach uses a combination of np.where() and cumsum() to create these numbers. I imagine that this approach is faster than is looping through the DataFrame to assign them, but I could be wrong.)
+# 
+# Note: if any sessions with a test number of 1 have been deleted, this code's classification of session numbers will be incorrect. However, these chronological values should still be 'good enough' for our needs.
+# 
+# (Note: I commented out this code following an update to the C++ code that allows session numbers to get calculated and stored within the original test_results.csv file. This code could become useful in the future if there's a need to display session numbers in chronological order, but for now, I'll comment it out.)
 
-# In[94]:
+# In[19]:
 
 
-if category == 'spv': 
-    # We can identify new sessions as those whose within-session test number
-    # is 1:
-    df_tr['new_session'] = np.where(
-        df_tr['Within_Session_Test_Number'] == 1, 1, 0)
-    # The following code increments the session number counter by 1 when
-    # a new session has begun and keeps it at its current number otherwise,
-    # thus allowing us to determine how many sessions the player has 
-    # started thus far.)
-    df_tr['Session number'] = df_tr['new_session'].cumsum()
-    # We won't have any further need for the new_session column, so we can
-    # remove it:
-    df_tr.drop('new_session', axis = 1, inplace = True)
-    df_tr
+# if category == 'spv': 
+#     # We can identify new sessions as those whose within-session test 
+# number
+#     # is 1:
+#     df_tr['new_session'] = np.where(
+#         df_tr['Within_Session_Test_Number'] == 1, 1, 0)
+#     # The following code increments the session number counter by 1 when
+#     # a new session has begun and keeps it at its current number 
+# otherwise,
+#     # thus allowing us to determine how many sessions the player has 
+#     # started thus far.)
+#     df_tr['Chronological session number'] = df_tr[
+# 'new_session'].cumsum()
+#     # We won't have any further need for the new_session column, so we can
+#     # remove it:
+#     df_tr.drop('new_session', axis = 1, inplace = True)
+#     df_tr
 
 
 # Calculating various timing statistics that will prove useful for endurance-related analyses:
 
-# In[95]:
+# In[20]:
 
 
 if category == 'spv': 
@@ -627,7 +638,7 @@ if category == 'spv':
 # 
 # (This information will be helpful for calculating endurance-based statistics.)
 
-# In[96]:
+# In[21]:
 
 
 if category == 'spv': 
@@ -641,7 +652,7 @@ if category == 'spv':
 # 
 # In the meantime, I've commented out this code so that it won't cause performance issues going forward.
 
-# In[97]:
+# In[22]:
 
 
 # df_tr_condensed = df_tr[['Unix_Test_Start_Time', 
@@ -650,7 +661,7 @@ if category == 'spv':
 # alternative engine options, but unfortunately, that wasn't the case.
 
 
-# In[98]:
+# In[23]:
 
 
 # for col_seconds_pair in col_seconds_pair_list:
@@ -666,7 +677,7 @@ if category == 'spv':
 
 # Note: I thought the following approach might actually be faster than the above option, as it only requires a single loop through the whole DataFrame. However, I found it to take a bit longer than the previous method.
 
-# In[99]:
+# In[24]:
 
 
 # for col in ['characters_typed_in_next_hour',
@@ -708,7 +719,7 @@ if category == 'spv':
 
 
 
-# In[100]:
+# In[25]:
 
 
 # df_tr
@@ -716,7 +727,7 @@ if category == 'spv':
 
 # ### WPM results by test:
 
-# In[101]:
+# In[26]:
 
 
 if category == 'spv': 
@@ -729,7 +740,7 @@ if category == 'spv':
 
 # ### Average WPM by Tag 1, Tag 2, and Tag 3 values:
 
-# In[111]:
+# In[27]:
 
 
 if category == 'spv': 
@@ -883,7 +894,8 @@ if category == 'spv':
     fig_wpm_by_session_num_comparison = px.line(df_tr.query(
     "Within_Session_Test_Number.notna()"),
             x = 'Within_Session_Test_Number', y = 'WPM',
-           color = 'Session number', title = "WPM by Session Number and \
+           color = 'Session_Number', 
+            title = "WPM by Session Number and \
 Within-Session Test Number").update_traces(
         mode = 'markers+lines').update_layout(showlegend = False,
         xaxis_title = 'Within-session test number')
