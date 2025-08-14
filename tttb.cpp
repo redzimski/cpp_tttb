@@ -46,14 +46,9 @@ Blessed Carlo Acutis, pray for us!
 
 To dos (very incomplete list)!
 
-    1. 
-
-    2. Update your code as needed so that the Python commands (both
-    within the C++ file and the multiplayer-file-combination Python 
-    file) work on Windows and Mac, not just Linux.
 
     3. Add documentation that explains your multiplayer-file-combination
-    feature provides suggested instructions for this game mode 
+    feature and provides suggested instructions for this game mode 
     (e.g. using 
     an online storage option or a local NAS hard drive to collect 
     results from each player).
@@ -86,7 +81,14 @@ To dos (very incomplete list)!
         with the total number of characters in that chapter
 
 
-    7. Update Readme with gameplay + compilation information.
+    7. Update Readme with gameplay + compilation information. Note
+    that you should consider disabling the build-shared-library 
+    options for cpp-terminal, and that you may need to change
+    the minimum C++ versions for certain libraries to C++ 17. 
+    (Also: it may not actually be necessary to build the third-party
+    libraries independently before you incorporate them into your
+    own project; consider testing out a build in which you only
+    run the build command for TTTB.)
 
     8. Add more documentation to this file as needed.
 
@@ -97,6 +99,9 @@ To dos (very incomplete list)!
 
     10. Create a YouTube video that describes this project and 
     provides a gameplay example.
+
+    11. Also consider creating a YouTube video that shows all
+    the steps involved in building TTTB.
 
 */
 
