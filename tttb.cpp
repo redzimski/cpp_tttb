@@ -317,6 +317,164 @@ struct Keypress_Processing_Time_Row
     long processing_time_in_microseconds;
 };
 
+std::string cooked_input_within_raw_mode(
+    std::string prompt = "", bool multiline=false)
+{/* This function aims to provide 'cooked-like' input within a 
+raw mode cpp-terminal session. It does so by allowing users to add
+to a string until they press enter. 
+If the input may be more than one line long, set multiline to true.
+The function will then clear the console and display only the 
+prompt, thus making multi-line input easier to handle.*/
+    
+    int starting_result_row = 2; // Defining the row at which
+    // the player's input should be typed. (Will only be used
+    // for multiline results, as otherwise, it would likely
+    // overwrite existing information on the screen.)
+    std::string user_string;
+    // Defining a string that will allow the cursor to get moved
+    // directly below the prompt: 
+    std::string cursor_reposition_code = Term::cursor_move(
+        starting_result_row, 1);
+
+    if (multiline == true)
+    {
+    int prompt_length = prompt.size();
+    // Determining on which row to begin printing the user's 
+    // input: (See similar code within run_test() for more
+    // details.)
+    Term::Screen term_size{Term::screen_size()};
+    starting_result_row = (prompt_length - 1) / (
+        term_size.columns()) + 2;
+
+    // Clearing the console and displaying the prompt:
+    // (Note that, unlike within run_test(), clear() isn't
+    // called here, as the usuer might want to be able to scroll
+    // up to see previous input.
+    Term::cout << Term::clear_screen()  
+        << Term::cursor_move(
+    1, 1) << prompt << std::endl;
+
+    // Calling cursor_move to determine the cursor reposition 
+    // code that will bring the cursor right under the verse
+    // after each keypress: 
+
+    cursor_reposition_code = Term::cursor_move(
+        starting_result_row, 1);
+    }
+
+    else
+
+    {//Printing the prompt, then adding two newlines (including that
+    // printed by std::endl) to give 
+    // the player more space to enter his/her response:
+    Term::cout << prompt << "\n" << std::endl;
+    // If multiline isn't active, the cursor reposition code 
+    // will be set as "\r", the carriage return call, which
+    // will move the cursor back to the start of the line.
+
+    cursor_reposition_code = "\r";
+    }
+    std::string keyname;
+    while (keyname != "Enter") // May also need to add 'Return' 
+    // or 'Ctrl+J' here also for OSX compatibility)
+    {
+        Term::Event event = Term::read_event();
+        switch (event.type())
+        {
+        case Term::Event::Type::Key:
+        {
+            Term::Key key(event);
+            std::string char_to_add = ""; 
+            keyname = key.name();
+                if (keyname == "Space")
+            {
+                char_to_add = " ";
+            }
+            else if (keyname == "Backspace") // We'll need to remove the
+            // last character from our string.
+            {
+                user_string = user_string.substr(
+                    0, user_string.length() - 1);
+            }
+            else if (keyname == "Enter")
+            {break;}
+            else
+            {
+                char_to_add = keyname;
+            }
+            user_string += char_to_add;
+        // See run_test documentation for more information about
+        // "\033[J". This code repositions the cursor (either
+        // to the beginning of the current line if multiline
+        // is false or to the beginning of the line below the 
+        // prompt if multiline is true); clears out everything
+        // past this point; then shows what the user has entered
+        // so far.
+        Term::cout << cursor_reposition_code << "\033[J" <<
+        user_string << std::flush; // Using std::flush rather 
+        // than std::endl so that we can begin our new 
+        // entry from the same line (which will be useful in
+        // non-multiline mode).
+        }
+        default:
+        {break;}
+        }
+}
+
+//For debugging:
+// Term::cout << "The string you entered was:\n" 
+// << user_string << std::endl;
+return std::move(user_string);
+
+}
+
+
+std::string get_single_keypress(std::vector<std::string> 
+valid_keypresses = {})
+/* This function retrieves a single keypress, then responds
+immediately to it. 
+The valid_keypresses argument allows the caller to specify
+which keypresses should be considered valid entries. If
+the default option is kept, any keypress will be considered
+valid. */
+
+{
+std::string single_key;
+bool valid_keypress_entered = false;
+while (valid_keypress_entered == false)
+    {
+        Term::Event event = Term::read_event();
+        switch (event.type())
+        {
+        case Term::Event::Type::Key:
+        {
+            Term::Key key(event);
+            single_key = key.name();
+            if (valid_keypresses.size() > 0)
+            {
+                for (std::string valid_keypress: valid_keypresses)
+            {
+                if (single_key == valid_keypress)
+                {valid_keypress_entered = true;}
+            }
+            if (valid_keypress_entered == false)
+            {Term::cout << single_key << " isn't a valid entry. Please \
+try again." << std::endl;} 
+            }
+            else // In this case, we'll assume the keypress
+            // to be valid.
+            {
+            valid_keypress_entered = true;}
+        }
+        default:
+        {break;}
+        }
+}
+return single_key;
+
+}
+
+
 int select_verse_id(const std::vector<Verse_Row> &vrv,
                     const int &last_verse_offset = 0)
 {
@@ -350,7 +508,7 @@ to type. This ID can be found in the first column of \
 the CPDB_for_TTTB.csv file. To exit out of this option, \
 type -1." << std::endl;
         // Checking for a valid response:
-        Term::cin >> id_response_as_str;
+        id_response_as_str = cooked_input_within_raw_mode();
         try
         {
             int id_response_as_int = std::stoi(id_response_as_str);
@@ -572,6 +730,30 @@ of that test.
     Term::Screen term_size{Term::screen_size()};
 
     // Clearing the console and displaying the verse to type:
+    // In order to make the transition from the following dialog
+    // to the actual test less jarring, I chose to place the verse
+    // at the top of the screen, exactly where it will appear
+    // during the test itself.
+    // Note: clear_screen() hides content within the current 
+    // window by scrolling down until the window is blank;
+    // clear() removes content further up in the terminal that is 
+    // now out of view. Thus, printing clear_screen(), followed by
+    // clear() and a command to move the cursor to the top left,
+    // prevents the terminal from filling up with previous entries 
+    // that no longer
+    // need to be saved in memory. (Note that, without the 
+    // inclusion of clear(), a new screen would be stored in 
+    // memory for all, or almost all *keypresses* during typing 
+    // tests--which I imagine could cause all sorts of 
+    // memory-related issues, at least on lower-powered devices.
+    // I found clear() within the cpp-terminal documentation;
+    // you can search for it by looking for the text [3J (which
+    // is part of a particular 'Erase in Display' ANSI erase 
+    // sequence; see https://en.wikipedia.org/wiki/ANSI_escape_code#SGR
+    // and Goran's AskUbuntu response at
+    // https://askubuntu.com/a/473770/1685413 .
+
+
     Term::cout << Term::clear_screen() << Term::terminal.clear() 
         << Term::cursor_move(
     1, 1) << verse_row.verse << std::endl;
@@ -607,29 +789,7 @@ of that test.
     // within marathon mode, thus allowing users to go directly
     // into the typing test.
     {
-    // In order to make the transition from the following dialog
-    // to the actual test less jarring, I chose to place the verse
-    // at the top of the screen, exactly where it will appear
-    // during the test itself.
-    // Note: clear_screen() hides content within the current 
-    // window by scrolling down until the window is blank;
-    // clear() removes content further up in the terminal that is 
-    // now out of view. Thus, printing clear_screen(), followed by
-    // clear() and a command to move the cursor to the top left,
-    // prevents the terminal from filling up with previous entries 
-    // that no longer
-    // need to be saved in memory. (Note that, without the 
-    // inclusion of clear(), a new screen would be stored in 
-    // memory for all, or almost all *keypresses* during typing 
-    // tests--which I imagine could cause all sorts of 
-    // memory-related issues, at least on lower-powered devices.
-    // I found clear() within the cpp-terminal documentation;
-    // you can search for it by looking for the text [3J (which
-    // is part of a particular 'Erase in Display' ANSI erase 
-    // sequence; see https://en.wikipedia.org/wiki/ANSI_escape_code#SGR
-    // and Goran's AskUbuntu response at
-    // https://askubuntu.com/a/473770/1685413 .
-
+    
     
 
         Term::cout << "\nYour next verse to type (" << 
@@ -1258,7 +1418,7 @@ current configuration settings:\nPlayer: '"
                    << gcf.tag_3 << "'\nNotes: '" << gcf.notes 
                    << "'" << std::endl;
 
-        Term::cin >> config_response;
+        config_response = cooked_input_within_raw_mode();
         // Checking the value of config_response for debugging purposes:
         Term::cout << "Value of config_response:\n"
                    << config_response << std::endl;
@@ -1324,7 +1484,8 @@ enter 'y.' To try again, enter 'n.'" << std::endl;
 
         std::string config_change_confirmation = "";
 
-        Term::cin >> config_change_confirmation;
+        config_change_confirmation = get_single_keypress(
+            {"y", "n"});
 
         if (config_change_confirmation != "y") // If anything other
         // than 'y' is entered by the user, the dialog will
@@ -2067,7 +2228,8 @@ update game configuration settings, enter 'u'. Finally, to \
 exit this session and save your progress, enter 'e'."
                        << std::endl;
 
-            Term::cin >> user_response;
+            user_response = get_single_keypress({"n", "c", "i",
+            "m", "s", "u", "e"});
         }
 
         if (user_response == "u") // This option will allow the user
@@ -2255,7 +2417,7 @@ separately if you prefer." << std::endl;
 
 std::string sp_stats_update_response = "";
 
-Term::cin >> sp_stats_update_response;
+sp_stats_update_response = get_single_keypress({"y", "n"});
 
 if (sp_stats_update_response == "y")
 {
@@ -2391,10 +2553,10 @@ std::string multiplayer_start_time_as_string = multiplayer_start_container;
     Term::cout << Term::clear_screen() << Term::terminal.clear() 
     << Term::cursor_move(
     1, 1) << "Welcome to Type Through the Bible's multiplayer \
-mode! First, enter the names of all players. (Player names cannot \
-include whitespace.) You may enter them all within the same line \
-(separated by spaces) or one by one. Once all names have been \
-entered, enter 'c'." << std::endl;
+mode! First, enter the names of all players one by one; make sure \
+to press Enter after each name. (Player names cannot \
+include whitespace.) Once all names have been \
+entered, type 'c' and hit Enter." << std::endl;
 
     std::vector<std::string> player_names = {};
 
@@ -2404,7 +2566,7 @@ entered, enter 'c'." << std::endl;
 // entered "c" AND (2) at least two players have been entered.
     while (!((new_player_name == "c") & (player_names.size() >= 1)))
     {
-        Term::cin >> new_player_name;
+        new_player_name = cooked_input_within_raw_mode();
         if (new_player_name == "c")
         {
             if (player_names.size() < 1)
@@ -2415,12 +2577,12 @@ one player name." << std::endl;}
         } // This check prevents 'c' from being added
         // as an additional player.
         player_names.push_back(new_player_name);
-        Term::cout << "Added " << new_player_name << " to player list. \
+        Term::cout << "\nAdded " << new_player_name << " to player list. \
 You may now enter the next player's name."
                    << std::endl;
     }
 
-    Term::cout << "Here are the " << player_names.size() << " players \
+    Term::cout << "\nHere are the " << player_names.size() << " players \
 who will be joining this game:"
                << std::endl;
     for (int i = 0; i < player_names.size(); i++)
@@ -2430,27 +2592,32 @@ who will be joining this game:"
         background_color_suffix << player_names[i] << std::endl;
     }
 
-    Term::cout << "Next, enter two integers. These will represent \
-how many rounds you would like to play, and how many consecutive \
-typing tests each player will perform each round."
-               << std::endl;
+
+// Determining how many rounds will be played, and how many
+// tests will be played (per player) each round:
 
     int multiplayer_rounds = 0;
     int tests_per_round = 0;
 
-    // You'll probably want to add code here that will identify and
-    // respond correctly to invalid responses (e.g. 'j' or "Hey").
-    // Alternatively, you could read in strings and then see whether
-    // they can be converted to integers. (See select_verse_id
-    // for an example of this approach.)
+    while (true) // Since only certain entries will be valid,
+    // we'll want to allow the player to retry his/her entries
+    // if needed.
+    {
+
 
     std::string multiplayer_rounds_as_string = "";
     std::string tests_per_round_as_string = "";
 
-    while (true)
-    {
-        Term::cin >> multiplayer_rounds_as_string >> 
-        tests_per_round_as_string;
+    Term::cout << "Next, enter an integer that represents \
+how many rounds you would like to play." << std::endl;
+
+    multiplayer_rounds_as_string = cooked_input_within_raw_mode(); 
+
+    Term::cout << "And now please enter, in integer form, \
+how many consecutive typing tests each player will \
+perform each round." << std::endl;
+
+    tests_per_round_as_string = cooked_input_within_raw_mode();
         try
         {
             multiplayer_rounds = std::stoi(
@@ -2489,9 +2656,8 @@ filename that will store your game results. (This step is \
 optional.) The tag should be 16 or fewer characters and should \
 not have any spaces." << std::endl;
 
-    std::string multiplayer_filename_string;
-
-    Term::cin >> multiplayer_filename_string;
+    std::string multiplayer_filename_string = (
+        cooked_input_within_raw_mode());
 
     if (multiplayer_filename_string.size() > 16)
     // Keeping only 16 characters from this string (to prevent
@@ -2793,7 +2959,7 @@ separately if you prefer." << std::endl;
 
 std::string mp_stats_update_response = "";
 
-Term::cin >> mp_stats_update_response;
+mp_stats_update_response = get_single_keypress({"y", "n"});
 
 if (mp_stats_update_response == "y")
 {
@@ -2830,17 +2996,13 @@ test results folder. For instance, if your full multiplayer test \
 results filename is 20250723T224940_testmpspimport_test_results.csv, \
 enter just 20250723T224940_testmpspimport ." << std::endl; 
 
-std::string mp_timestamp_and_tag;
-
-Term::cin >> mp_timestamp_and_tag;
+std::string mp_timestamp_and_tag = cooked_input_within_raw_mode();
 
 Term::cout << "Next, enter the EXACT name of the player, as shown \
 within the multiplayer results file, whose results you wish to \
 import into your main single-player file." << std::endl;
 
-std::string player_to_import;
-
-Term::cin >> player_to_import;
+std::string player_to_import = cooked_input_within_raw_mode();
 
 // Identifying the files from which we will import multiplayer
 // results:
@@ -2894,9 +3056,8 @@ multiplayer results file will get overwritten with these values. \
 To update these values before they get saved to your single-player \
 file, enter 'y'; to keep them as they are, enter 'n'." << std::endl;
 
-std::string config_update_request;
 
-Term::cin >> config_update_request;
+std::string config_update_request = get_single_keypress({"y", "n"});
 
 if (config_update_request == "y")
 
@@ -2909,9 +3070,7 @@ added to your main test results files under the name " <<
 new_gcf.player << ". Enter 'y' to proceed or \
 'n' to cancel." << std::endl;
 
-std::string import_confirmation;
-
-Term::cin >> import_confirmation;
+std::string import_confirmation = get_single_keypress({"y", "n"});
 
 if (import_confirmation == "y")
 {
@@ -3086,16 +3245,13 @@ results.\n\nAlternatively, enter 'y' to have the game \
 detect these IDs within the first set of results that it \
 analyzes." << std::endl;
 
-std::string verse_ids = ""; 
-
-Term::cin >> verse_ids;
+std::string verse_ids = cooked_input_within_raw_mode(); 
 
 Term::cout << "Enter 'y' to process these results and 'n' to \
 cancel." << std::endl;
 
-std::string result_combination_confirmation;
-
-Term::cin >> result_combination_confirmation;
+std::string result_combination_confirmation = (
+    get_single_keypress({"y", "n"}));
 
 if (result_combination_confirmation == "y")
 
@@ -3150,8 +3306,10 @@ Type Through the Bible!" << std::endl;
     std::string game_exit_message = "Exiting Type Through \
 the Bible.";
 
-    char gameplay_option = '0';
-    while (gameplay_option != 'e')
+
+
+    std::string gameplay_option = "0";
+    while (gameplay_option != "e")
     {
     // Initializing our terminal:
     /*The following code was based in part on
@@ -3164,6 +3322,9 @@ the Bible.";
     Term::terminal.setOptions(Term::Option::NoClearScreen,
     Term::Option::NoSignalKeys, Term::Option::NoCursor,
                               Term::Option::Raw);
+    // The following line comes from the keys.cpp example 
+    // at https://github.com/jupyter-xeus/cpp-terminal/blob/master/examples/keys.cpp 
+    
     if (!Term::is_stdin_a_tty())
     {
         throw Term::Exception(
@@ -3171,7 +3332,22 @@ the Bible.";
 can't catch user input. Exiting...");
     }
 
+// The following code was helpful in developing and debugging
+// both the cooked_input_within_raw_mode() and the 
+// get_single_keypress() functions.
+// std::string cooked_input_output = ""; 
+// while (cooked_input_output != "e")
+{
+// cooked_input_output = cooked_input_within_raw_mode(
+//     "Please enter a string", true);
+// Term::cout << "The string you entered was:" << cooked_input_output << std::endl;
+// 
 
+// cooked_input_output = get_single_keypress({
+//     "s", "m", "r", "c", "e"});
+// Term::cout << "The string you entered was: " 
+// << cooked_input_output << std::endl;
+}
 
 
 Term::cout << "\nEnter 's' or 'm' for single-player or \
@@ -3181,42 +3357,41 @@ results within ..Files/MP_Test_Result_Files_To_Combine into a single \
 file, then analyze them, enter 'c'.\nTo exit the game, \
 press 'e.'" << std::endl;
 
-        Term::cin >> gameplay_option;
-        switch (gameplay_option)
+        gameplay_option = get_single_keypress({
+    "s", "m", "r", "c", "e"});
 
-        {
-        case 's':
+        if (gameplay_option ==  "s")
         {
             run_single_player_game(py_complement_name);
             continue;
         }
 
-        case 'm':
+        else if (gameplay_option ==  "m")
         {
             run_multiplayer_game(py_complement_name);
             continue;
         }
 
-        case 'e':
+        else if (gameplay_option ==  "e")
         {
             Term::cout << "Exiting Type Through the Bible." 
             << std::endl;
             continue;
         }
     
-        case 'r':
+        else if (gameplay_option ==  "r")
         {
             import_mp_results();
             continue;
         }
 
-        case 'c':
+        else if (gameplay_option ==  "c")
         {
             combine_multiplayer_results(py_complement_name);
             continue;
         }
 
-        default:
+        else
         {
             Term::cout << "That input wasn't recognized. \
 Please try again."
@@ -3224,4 +3399,3 @@ Please try again."
         }
         }
     }
-}
