@@ -946,7 +946,8 @@ the space bar to begin the typing test." << std::endl;
             }
             // For documentation on substr, see
             // https://cppscripts.com/string-slicing-cpp
-            else if (keyname == "Alt+Del") // This behavior is similar to
+            else if ((keyname == "Alt+Del") || (keyname == "Del"))
+            // This behavior is similar to
             // Ctrl + Backspace (which seemed to be interpreted as just
             // Backspace by the cpp-terminal library). The following code
             // will remove all characters from the end of the string up
@@ -958,6 +959,10 @@ the space bar to begin the typing test." << std::endl;
             // Note: the cpp-terminal code interpreted the combination
             // of the Alt and Backspace keys, at least on 
             // Linux, as Alt + Delete.
+            // Note: Alt + Delete was interpreted as a regular
+            // Backspace entry on the Mac on which I tested 
+            // TTTB; therefore, I added Del (which could be 
+            // produced via Fn + Delete on that Mac) as an option.)
             {
                 backspace_counter++;
                 word_backspace_counter++;
