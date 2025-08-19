@@ -31,10 +31,32 @@ os.getcwd()
 
 current_os = platform.system().lower() # Will be used to label certain files
 # and folders
+if current_os == 'darwin':
+    current_os = 'osx' # Will be more intuitive for many users 
+    # than 'darwin'
 current_os
 
 
+# Specifying the names of the Python and C++ binaries:
+
 # In[4]:
+
+
+if current_os == 'windows':
+    python_binary = 'tttb_py_complement.exe'
+    cpp_binary = 'tttb.exe'
+else:
+    python_binary = 'tttb_py_complement'
+    cpp_binary = 'tttb'
+
+
+# In[5]:
+
+
+python_binary, cpp_binary
+
+
+# In[6]:
 
 
 release_folder = f'../cpp_tttb_{current_os}_release/' 
@@ -42,7 +64,7 @@ release_folder = f'../cpp_tttb_{current_os}_release/'
 release_folder
 
 
-# In[5]:
+# In[7]:
 
 
 if release_folder.replace('../', '').replace('/', '') in os.listdir('../'):
@@ -68,7 +90,7 @@ os.mkdir(release_folder + 'Visualizations/Single_Player')
 
 # Copying new versions of our word result, test result, and Bible files over to the Files folder:
 
-# In[6]:
+# In[8]:
 
 
 if list(pd.read_csv(
@@ -77,7 +99,7 @@ pd.read_csv('Files/word_results.csv').columns):
     raise ValueError ("Columns don't match!")
 
 
-# In[7]:
+# In[9]:
 
 
 if list(pd.read_csv(
@@ -86,7 +108,7 @@ pd.read_csv('Files/test_results.csv').columns):
     raise ValueError ("Columns don't match!")
 
 
-# In[8]:
+# In[10]:
 
 
 if list(pd.read_csv(
@@ -95,7 +117,7 @@ pd.read_csv('Files/game_config.csv').columns):
     raise ValueError ("Columns don't match!")
 
 
-# In[9]:
+# In[11]:
 
 
 shutil.copy('Files/word_results_headers_only.csv',
@@ -110,19 +132,19 @@ shutil.copy('Catholic_Public_Domain_Bible/CPDB_for_TTTB.csv',
 
 # Copying TTTB C++ and Python binaries, along with supporting files for Python binary, to the release folder:
 
-# In[10]:
+# In[12]:
 
 
-shutil.copy('build/tttb',
-            release_folder+'build/tttb')
-shutil.copy('build/tttb_py_complement',
-            release_folder+'build/tttb_py_complement')
+shutil.copy(f'build/{cpp_binary}',
+            release_folder+f'build/{cpp_binary}')
+shutil.copy(f'build/{python_binary}',
+            release_folder+f'build/{python_binary}')
 # For details on shutil.copytree, see 
 # https://docs.python.org/3/library/shutil.html
 shutil.copytree('build/_internal', release_folder+'build/_internal')
 
 
-# In[11]:
+# In[13]:
 
 
 print(f"Clean copy of TTTB can now be found at:\n{release_folder}")

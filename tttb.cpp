@@ -33,9 +33,12 @@ library changes default cin settings; for reference,
 see https://github.com/jupyter-xeus/cpp-terminal/issues/320 .
 To avoid this issue, I simply replaced all std::cin and std::cout
 calls with Term::cin and Term::cout, respectively.
+However, I then found that Term::cin calls didn't always work
+within OSX following typing tests; therefore, I ended up updating
+the game so that all input was entered within raw_mode.
 
 2. It also appears that the cpp-terminal library requires
-std::endl at the end of Term::cout statements rather than '\n';
+std::endl or std::flush at the end of Term::cout statements rather than '\n';
 otherwise, output may not appear.
 
 3. References to 'PPP3' refer to the 3rd Edition of
@@ -665,7 +668,8 @@ bool run_test(
     long& test_number, long& session_number, 
     int& within_session_test_number, 
     const bool allow_quitting,
-    std::vector<Keypress_Processing_Time_Row> &kptrv)
+    std::vector<Keypress_Processing_Time_Row> &kptrv,
+    std::string& within_test_update_message)
 /* This function allows the player to complete a single typing test.
 It then updates the verse_row, trrv, and wrrv vectors with the results
 of that test.
@@ -789,37 +793,31 @@ of that test.
     // within marathon mode, thus allowing users to go directly
     // into the typing test.
     {
-    
-    
-
-        Term::cout << "\nYour next verse to type (" << 
+        Term::cout << "\n" << within_test_update_message << "\nYour \
+next verse to type (" << 
         verse_row.verse_code 
     << ") is shown above. This verse is " << verse_row.characters
                    << " characters long.\nPress \
-the space bar to begin the typing test." << std::endl;
+the space bar to begin the typing test and 'e' to cancel it." 
+<< std::endl ;
 
         // The following while statement allows the user to begin the
-        // test immediately after pressing a key. This statement will also
-        // display the verse following the keypress so that the user can
-        // reference it when beginning the test. (The verse is displayed at
+        // test immediately after pressing *only* the space bar. 
+        // It also lets the player cancel the test by
+        // pressing 'e.' 
+        // The verse will still be present at the 
+        // top left of the terminal so that
+        // the user can reference it when beginning the test.
         // the top left so that its location won't change between this
         // section of the script and the following while loop.)
-        bool start_test = false;
-        while (start_test == false)
+        
+        std::string player_response = get_single_keypress(
+        {"Space", "e"});
+        if (player_response == "e")
         {
-            Term::Event event = Term::read_event();
-            switch (event.type())
-            {
-            case Term::Event::Type::Key:
-            {
-                Term::Key key(event);
-                start_test = true;
-                break;
-            }
-            default:
-                break;
-            }
-        };
+        exit_test = true;
+        completed_test = false;
+        }
     }
 
     // Clearing the screen before the start of the test:
@@ -946,8 +944,26 @@ the space bar to begin the typing test." << std::endl;
             }
             // For documentation on substr, see
             // https://cppscripts.com/string-slicing-cpp
-            else if ((keyname == "Alt+Del") || (keyname == "Del"))
-            // This behavior is similar to
+
+            // Defining key combinations that will allow entire
+            // words to be deleted:
+            else if ((keyname == "Alt+Del") || (
+            keyname == "Del") || (keyname == "Alt+Backspace"))
+            // Alt+Del, Del, and Alt+Backspace were added in for
+            // Linux, OSX, and Windows, respectively; thankfully,
+            // they don't seem to conflict with one another.
+            // I found these key names by experimenting with the 
+            // executable version of the keys.cpp example within
+            // the cpp-terminal library (available at
+            // https://github.com/jupyter-xeus/cpp-terminal/blob/master/examples/keys.cpp ).
+            // Note that Alt+Del is generated in Liunx by pressing 
+            // Alt+Backspace (at least when using Linux Mint on my 
+            // Gigabyte Aorus laptop); Del is generated in OSX
+            // by pressing Function + Delete; and Alt+Backspace
+            // is generated in Windows by pressing Alt+Backspace.
+            // I would have liked to set Ctrl + Backspace as an 
+            // option, but this key combination simply produced
+            // 'Backspace' for me on Windows and Linux.
             // Ctrl + Backspace (which seemed to be interpreted as just
             // Backspace by the cpp-terminal library). The following code
             // will remove all characters from the end of the string up
@@ -2017,7 +2033,7 @@ completed so far." << std::endl;
 
 void run_single_player_game(std::string py_complement_name)
 {
-    Term::cout << "Now calling count_sp_test_results." << std::endl;
+    //Term::cout << "Now calling count_sp_test_results." << std::endl;
     std::map<std::string, long> test_and_session_numbers = 
     count_sp_test_results();
     long test_number = test_and_session_numbers["test_number"];
@@ -2151,14 +2167,22 @@ this rare accomplishment!"
 
     std::string user_response = "";
     bool marathon_mode = false;
+    bool show_update_within_run_test = false; // If set to true,
+    // progress updates will be shown within run_test; otherwise,
+    // they will be shown within the following loop.
 
     std::vector<double> session_wpm_results = {}; // Stores all WPM values
     // from tests completed during this session (which will allow us
     // to share WPM-related stats before non-marathon races).
 
+
     // Main single-player gameplay loop:
     while (user_response != "e")
-    {
+    {   std::string progress_message = ""; // This message, which
+    // this loop will update, will 
+    // be displayed either within this gameplay loop or within
+    // run_test (depending on what gameplay setting the user
+    // has chosen).
 
         int verse_index_to_type = -1; // We'll check for this value when
         // determining whether to run a typing test.
@@ -2167,6 +2191,25 @@ this rare accomplishment!"
         // skipping the regular prompt with which users are presented):
         if (marathon_mode == false)
         {
+
+            if ((show_update_within_run_test == true) || (
+                within_session_test_number >= 1)) {
+            // In this case,
+            // the user won't be able to view the normal
+            // post-race results message, so we'll add it here 
+            // instead. (This message also shows the verse code
+            // in order to clarify, in the result of a canceled 
+            // test, the verse to which this result belongs.)
+            progress_message += "You typed " + trrv.back(
+).verse_code + ", a(n) " + std::to_string(
+trrv.back().characters) + "-character verse, \
+in " + std::to_string(trrv.back().test_seconds)+ " seconds, \
+which reflects a typing speed of " + std::to_string(
+trrv.back().wpm)+" WPM. Your error rate \
+was " + std::to_string(trrv.back().error_rate) + " (not \
+including backspaces) and "+std::to_string(
+trrv.back().error_and_backspace_rate) +" (including backspaces).\n";
+            }
 
             // Calculating the player's average WPM across (1) all races
             // completed this session and (2) the last 10 races:
@@ -2197,32 +2240,44 @@ this rare accomplishment!"
                 session_wpm_mean = (session_wpm_sum / 
                 within_session_test_number);
                 last_10_wpm_mean = last_10_wpm_sum / 10;
-                Term::cout << "You have typed " << 
-            characters_typed_during_current_session << " characters \
+                progress_message += "You have typed " + 
+            std::to_string(
+        characters_typed_during_current_session) + " characters \
 so far this session. Your mean WPM over the " 
-                << within_session_test_number
-                << " races you have completed this session is "
-                << session_wpm_mean << "." << std::endl;
+                + std::to_string(within_session_test_number)
+                + " races you have completed this session is "
+                + std::to_string(session_wpm_mean) + ".\n";
             }
 
             if (within_session_test_number >= 10)
             {
-                Term::cout << "Your mean WPM over your last 10 \
-races is " << last_10_wpm_mean << "." << std::endl;
+                progress_message +=  "Your mean WPM over your last 10 \
+races is " + std::to_string(last_10_wpm_mean) + ".\n";
             }
             // The following code displays a different set of colors
             // after each test; the patterns will repeat every
             // 256 tests. (There's no real purpose for doing so;
             // I just thought it would be nice to add a bit more
             // color to the terminal display!)
-            Term::cout << background_color_prefix + 
+            progress_message += background_color_prefix + 
         background_color_codes[
             (within_session_test_number / 16) % 16] +
-        background_color_suffix << background_color_prefix + 
+        background_color_suffix + background_color_prefix + 
         background_color_codes[within_session_test_number % 16] +
-        background_color_suffix << std::endl;
+        background_color_suffix;
+
+        if (show_update_within_run_test == false) // In this case,
+        // we'll display the progress message here rather than
+        // within the next run_test() call.
+            {Term::cout << progress_message << std::endl;
+
             Term::cout << "Enter 'n' to type the next untyped verse; \
 'c' to type the next verse; and 'i' to type a specific verse ID.\n\
+If you would like to skip this prompt but not start tests \
+automatically, enter N (to automatically get directed to the \
+next untyped verse); C (to automatically get directed to the \
+next next verse); or I (to select a verse from which to begin, then \
+automatically get directed to the verses that follow it).\n\
 To enter 'untyped marathon mode' \
 (in which you will continually be presented with the next \
 untyped verse until you exit out of a race), press 'm.'\n\
@@ -2234,8 +2289,18 @@ exit this session and save your progress, enter 'e'."
                        << std::endl;
 
             user_response = get_single_keypress({"n", "c", "i",
-            "m", "s", "u", "e"});
+            "m", "s", "u", "e", "N", "C", "I"});
         }
+        }
+        // Instructing the game to show progress messages within 
+        // run_test rather than this loop if N or C was requested:
+        if ((user_response == "N") || (user_response == "C") ||
+        (user_response == "I"))
+    {
+        show_update_within_run_test = true;}
+    else
+    {
+        show_update_within_run_test = false;}
 
         if (user_response == "u") // This option will allow the user
         // to update game configuration settings for the current session.
@@ -2243,14 +2308,21 @@ exit this session and save your progress, enter 'e'."
             update_game_config(gcf);
         }
 
-        else if ((user_response == "n") || user_response == "m")
+        else if ((user_response == "n") || (user_response == "m") ||
+        (user_response == "N"))
 
             if (all_verses_typed == true)
             {
                 Term::cout << all_verses_typed_message << std::endl; 
-                // Since verse_index_to_type is stil at -1, and 
-                // marathon mode hasn't been set to true, the user
+                marathon_mode = false;
+                // Since verse_index_to_type is stil at -1, the user
                 // will now be returned to the main gameplay prompt.
+                // (It may not actually be necessary to set 
+                // marathon_mode to false here, but it likely 
+                // won't hurt to include this code just in case.)
+                show_update_within_run_test = false; 
+                // Resetting this boolean to false so that the user 
+                // can pick a new gameplay code
             }
             else
             {
@@ -2286,9 +2358,16 @@ exit this session and save your progress, enter 'e'."
                 }
             }
 
-        else if (user_response == "i")
+        else if ((user_response == "i") || (user_response == "I"))
         {
             verse_index_to_type = select_verse_id(vrv);
+            if (user_response == "I") // In this case, now that
+            // the desired verse to type has been selected,
+            // user_response will be changed to 'C' so that 
+            // the user will continue to be presented consecutive
+            // verses (either typed or untyped) that follow after
+            // this first verse.)
+            {user_response = "C";}
         }
 
         else if (user_response == "e")
@@ -2297,7 +2376,8 @@ exit this session and save your progress, enter 'e'."
             // break;
         }
 
-        else if ((user_response == "s") || (user_response == "c"))
+        else if ((user_response == "s") || (user_response == "c")
+        || (user_response == "C"))
         {
             if (previously_typed_verse_index == (vrv.size() - 1)) 
             // In this case, the previously-typed verse
@@ -2310,6 +2390,7 @@ which will allow you to type a specific verse."
                            << std::endl;
                 marathon_mode = false; // Exiting marathon mode in order to prevent
                 // an infinite dialog loop from occuring
+                show_update_within_run_test = false;
             }
             else
             {
@@ -2342,17 +2423,26 @@ from which to start this mode." << std::endl;
             // (hopefully) reduce runtime and/or allow certain items,
             // including trrv and wrrv, to get updated directly within
             // the function.
+            std::string within_test_update_message = "";
+            if (show_update_within_run_test == true)
+                {within_test_update_message = progress_message;}
+
+
             bool completed_test = run_test(
                 vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                 gcf.player, gcf.mode, gcf.tag_1, gcf.tag_2, gcf.tag_3,
                 gcf.notes, test_number, session_number,
                 within_session_test_number,
-                true, kptrv);
+                true, kptrv, within_test_update_message);
             // The following code will exit a user out of either marathon
             // mode if he/she did not complete the most recent test.
+            // It will also cause the pre-test menu to reappear
+            // if the user had disabled it via the 'N', 'C', or 'I' 
+            // game modes.
             if (completed_test == false)
             {
                 marathon_mode = false;
+                show_update_within_run_test = false;
             }
 
             if (completed_test == true)
@@ -2414,7 +2504,7 @@ from which to start this mode." << std::endl;
 // The following code was based on the examples shown at
 // https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
 
-Term::cout << "Enter 'y' to call Python script that updates \
+Term::cout << "Enter 'y' to call a Python script that updates \
 single-player stats; enter 'n' to skip this process. (This may \
 require some setup on your part; \
 see Readme for more details. You can also run that script \
@@ -2458,6 +2548,7 @@ Term::cout << "Quitting single-player gameplay session."
     << std::endl;
 
 }
+
 
 std::vector<std::pair<std::string, double>> calculate_wpms_by_player(
     const std::vector<std::string>& player_names,  
@@ -2613,12 +2704,12 @@ who will be joining this game:"
     std::string multiplayer_rounds_as_string = "";
     std::string tests_per_round_as_string = "";
 
-    Term::cout << "Next, enter an integer that represents \
+    Term::cout << "\nNext, enter an integer that represents \
 how many rounds you would like to play." << std::endl;
 
     multiplayer_rounds_as_string = cooked_input_within_raw_mode(); 
 
-    Term::cout << "And now please enter, in integer form, \
+    Term::cout << "\nAnd now please enter, in integer form, \
 how many consecutive typing tests each player will \
 perform each round." << std::endl;
 
@@ -2632,12 +2723,12 @@ perform each round." << std::endl;
         // Making sure that the player isn't asking for more 
         // verses than the Bible contains:
         if (multiplayer_rounds * tests_per_round > vrv.size())
-        {Term::cout << "Please make sure that the product of your \
+        {Term::cout << "\nPlease make sure that the product of your \
 two integers doesn't exceed " << vrv.size() << "." << std::endl;
     continue;
         }
         if ((multiplayer_rounds < 1) || (tests_per_round < 1))
-        {Term::cout << "Make sure to enter two \
+        {Term::cout << "\nMake sure to enter two \
 positive integers." << std::endl;
     continue;
         }
@@ -2646,17 +2737,17 @@ positive integers." << std::endl;
         }
         catch (...)
         {
-            Term::cout << "Please enter two integers." << std::endl;
+            Term::cout << "\nPlease enter two integers." << std::endl;
         }
     }
 
-    Term::cout << "This game will feature " << multiplayer_rounds 
+    Term::cout << "\nThis game will feature " << multiplayer_rounds 
     << " round(s) with " << tests_per_round << " test(s) per round. \
 With " << player_names.size() << " players, this game will \
 include " << multiplayer_rounds * player_names.size() * 
 tests_per_round << " tests in total." << std::endl;
 
-    Term::cout << "Next, enter a tag to incorporate into the \
+    Term::cout << "\nNext, enter a tag to incorporate into the \
 filename that will store your game results. (This step is \
 optional.) The tag should be 16 or fewer characters and should \
 not have any spaces." << std::endl;
@@ -2681,7 +2772,7 @@ not have any spaces." << std::endl;
     // initial timestamp will get saved to the file list. (This
     // is very unlikely, but better safe than sorry!)
     {
-    Term::cout << "In order to prevent another file from getting \
+    Term::cout << "\nIn order to prevent another file from getting \
     overwritten, 'CMR1' will be used in place of 'CMR'." << std::endl;
     multiplayer_filename_string = "CMR1";
     }
@@ -2705,7 +2796,7 @@ multiplayer_filename_string + "_word_results.csv");
 multiplayer_start_time_as_string + "_" + 
 multiplayer_filename_string + "_pivot.csv");
 
-    Term::cout << "The full set of test- and word-level results \
+    Term::cout << "\nThe full set of test- and word-level results \
 from this session will be available at " << 
 multiplayer_test_results_path << " and " << 
 multiplayer_word_results_path << ", respectively; mean WPMs for \
@@ -2721,7 +2812,7 @@ multiplayer_rounds * tests_per_round) - 1; // Subtracting 1 here
     // will allow a multiplayer round to end on the final verse
     // within the Bible.
 
-    Term::cout << "Finally, enter the integer corresponding to the \
+    Term::cout << "\n\nFinally, enter the integer corresponding to the \
 verse ID at which you would like to begin the game. This can range \
 from 1 to " << vrv.size() - last_verse_offset << ". (Enter -1 to \
 cancel this multiplayer session, and -2 to choose \
@@ -2731,7 +2822,7 @@ randomly-selected verses.)" << std::endl;
     multiplayer_rounds * tests_per_round);
 
     if (starting_verse_index_to_type == -1)
-    {Term::cout << "Cancelling multiplayer game." << std::endl;
+    {Term::cout << "\nCancelling multiplayer game." << std::endl;
     return;}
 
     std::vector<int> random_verse_ids {};
@@ -2827,7 +2918,7 @@ starting_verse_index_to_type + (current_round - 1) * (
         // highlight when a new player's session has begun.
         // (I also added in color codes for rounds and within-round
         // tests in order to liven up the display a little. :) 
-                Term::cout << "Here are the details for the \
+                Term::cout << "\n\nHere are the details for the \
 following test:\nRound: " << background_color_prefix + 
         background_color_codes[(current_round -1) % 16] +
         background_color_suffix << " " << current_round
@@ -2845,33 +2936,36 @@ following test:\nRound: " << background_color_prefix +
     // the next test before run_test() gets called. (That function
     // clears the screen, so without this prompt, players wouldn't
     // have a chance to see this information.)
-                Term::cout << "Press the space bar to \
+                Term::cout << "Press 'c' to \
 continue. (The test won't start just yet.)" << std::endl;
-    bool proceed_to_test = false;
-    while (proceed_to_test == false)
-        {
-            Term::Event event = Term::read_event();
-            switch (event.type())
-            {
-            case Term::Event::Type::Key:
-            {
-                Term::Key key(event);
-                proceed_to_test = true;
-                break;
-            }
-            default:
-                break;
-            }
-        };
+    // bool proceed_to_test = false;
+    // while (proceed_to_test == false)
+    //     {
+    //         Term::Event event = Term::read_event();
+    //         switch (event.type())
+    //         {
+    //         case Term::Event::Type::Key:
+    //         {
+    //             Term::Key key(event);
+    //             proceed_to_test = true;
+    //             break;
+    //         }
+    //         default:
+    //             break;
+    //         }
+    //     };
+    get_single_keypress({"c"});
 
                 // The following loop will continue until a player
                 // has successfully completed a test.
+                std::string within_test_update_message = "";
 
                     completed_test = run_test(
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                     mgcf.player, mgcf.mode, mgcf.tag_1, mgcf.tag_2, 
                     mgcf.tag_3, mgcf.notes, test_number, session_number,
-                    within_session_test_number, true, kptrv); 
+                    within_session_test_number, true, kptrv, 
+                    within_test_update_message); 
                     // The 'true' argument here governs the 
                     // 'allow_quitting' parameter. I had
                     // originally set it to False, but realized
@@ -2956,7 +3050,7 @@ mp_pivot_export_end_time - mp_pivot_export_start_time)
 // The following code was based on
 // https://stackoverflow.com/a/4907852/13097194 
 
-Term::cout << "Enter 'y' to call Python script that will visualize \
+Term::cout << "Enter 'y' to call a Python script that will visualize \
 your new multiplayer stats; enter 'n' to skip this process. \
 (This may require some setup on your part; \
 see Readme for more details. You can also run the multiplayer script \
@@ -3284,14 +3378,12 @@ Term::cout << std::endl;
 
 int main()
 {
-
-
 // Determining which executable command to pass to system calls:
 // One name should work for both Linux and OSX; the other name
 // should work for Windows.
 
 std::string py_complement_name = "";
-#ifdef _Win32  // From
+#ifdef _WIN32  // From
 // https://www.geeksforgeeks.org/cpp/writing-os-independent-code-cc/
 {py_complement_name = "tttb_py_complement.exe";}
 #else
