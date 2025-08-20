@@ -144,7 +144,18 @@ shutil.copy(f'build/{python_binary}',
 shutil.copytree('build/_internal', release_folder+'build/_internal')
 
 
-# In[13]:
+# Copying Markdown and PDF versions of Readme over to release folder:
+
+# In[16]:
+
+
+shutil.copy('README.md',
+            release_folder+'README.md')
+shutil.copy('README.pdf',
+            release_folder+'README.pdf')
+
+
+# In[ ]:
 
 
 print(f"Clean copy of TTTB can now be found at:\n{release_folder}")

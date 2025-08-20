@@ -128,6 +128,7 @@ elif category == 'mpfc':
 
 
 if category == 'mpfc':    
+    print("Combining multiplayer files together.")
     if verse_ids in ['y', 'Y']: # In this case, we'll examine a particular
         # player's results to determine which verse IDs
         # to use.
@@ -342,6 +343,7 @@ file is available at ../Files/Multiplayer/{df_combined_filename}.")
 
 
 if category == 'mpv':
+    print("Analyzing multiplayer data.")
     if (test_results_timestamp in ['y', 'Y']): # In this case, the 
         # most recently modified file (presumably one that was just created, 
         # in fact) will be analyzed.
@@ -419,8 +421,7 @@ if category == 'mpv':
     df_wpm_type_melt['WPM Type'] = df_wpm_type_melt['WPM Type'].replace(
     {'WPM':'Test WPM'})
     
-    df_wpm_type_melt
-
+    print("Creating visualizations.")
     fig_wpm_by_player = px.line(df_wpm_type_melt, 
 x = 'Player test number', y = 'WPM',
         color = 'Player', line_dash = 'WPM Type',
@@ -436,7 +437,7 @@ Player_And_Test.html',
     # fig_wpm_by_player
 
 
-# Calculating mean WPMs by player and round as well as overall WPMs:
+# Calculating mean WPM by player and round as well as overall WPM:
 
 # In[14]:
 
@@ -446,7 +447,7 @@ if category == 'mpv':
     index = ['Player', 'Round'], values = 'WPM', 
                    aggfunc = 'mean').reset_index()
     
-    # Adding overall WPMs for each player to the bottom of this DataFrame:
+    # Adding overall WPM for each player to the bottom of this DataFrame:
     
     df_mean_wpm_by_player = df.pivot_table(
     index = 'Player', values = 'WPM', 
@@ -503,7 +504,7 @@ WPM for this test', aggfunc = 'sum').reset_index()
     fig_wins = px.bar(df_wins, x = 'Player', 
            y = 'Player had best WPM for this test',
           title = 'Number of Tests in Which Each Player \
-    Had the Highest WPM', text_auto = '.0f',
+Had the Highest WPM', text_auto = '.0f',
                      color = 'Player', 
     color_discrete_sequence=px.colors.qualitative.Alphabet).update_layout(
     yaxis_title = 'Wins')
@@ -551,6 +552,7 @@ if category == 'mpv':
 
 
 if category == 'spv': 
+    print("Analyzing single-player results.")
     df_tr = pd.read_csv('../Files/test_results.csv') # tr = 'test results'
     
     # Converting start/end timestamps to DateTime values:
@@ -565,10 +567,7 @@ if category == 'spv':
     
     df_tr = df_tr.sort_values(
         'Local_Test_Start_Time').reset_index(drop=True).copy()
-    
     df_tr['Chronological test number'] = df_tr.index+1
-
-    df_tr
 
 
 # Adding chronological session numbers to DataFrame:
@@ -608,6 +607,9 @@ if category == 'spv':
 
 if category == 'spv': 
     for time_type in ['Start', 'End']:
+        df_tr[f'{time_type} Year and Month'] = df_tr[
+        f'Local_Test_{time_type}_Time'].dt.year.astype('str') + '-' + df_tr[
+        f'Local_Test_{time_type}_Time'].dt.month.astype('str').str.zfill(2)
         df_tr[f'{time_type} Date'] = df_tr[
             f'Local_Test_{time_type}_Time'].dt.date
         df_tr[f'{time_type} Hour'] = df_tr[
@@ -622,6 +624,7 @@ if category == 'spv':
             f'{time_type} Minute'] // 15 + 1
         df_tr[f'{time_type} 10-Minute Block'] = df_tr[
             f'{time_type} Minute'] // 10 + 1
+        
     
     # Creating columns that will store unique starting hours and
     # 30/15/10-minute blocks:
@@ -733,16 +736,84 @@ if category == 'spv':
 
 
 if category == 'spv': 
+    print("Analyzing WPM data.")
     fig_wpm_by_test = px.line(
         df_tr, x = 'Chronological test number', y = 'WPM',
     title = 'WPM by Chronological Test Number',)
-    fig_wpm_by_test.write_html(f'{sp_visualizations_folder}WPM_by_race.html',
-                               include_plotlyjs = 'cdn')
+    fig_wpm_by_test.write_html(
+        f'{sp_visualizations_folder}WPM_by_race.html',
+        include_plotlyjs = 'cdn')
+
+
+# In[27]:
+
+
+if category == 'spv': 
+    df_fastest_tests = df_tr.sort_values(
+        'WPM', ascending = False).iloc[0:100].copy().reset_index(drop=True)
+    df_fastest_tests['Rank'] = df_fastest_tests.index + 1
+    df_fastest_tests.head()
+
+
+# In[28]:
+
+
+if category == 'spv': 
+    fig_fastest_tests = px.bar(df_fastest_tests, x = 'Rank', y = 'WPM',
+       color = 'Error_and_Backspace_Rate',
+       hover_data = ['Test_Number', 'Local_Test_Start_Time',
+                     'Verse_ID', 'Verse_Code'],
+       text_auto = '.3f', title = '100 Fastest Tests')
+    fig_fastest_tests.write_html(
+        f'{sp_visualizations_folder}Fastest_Tests.html',
+        include_plotlyjs = 'cdn')
+
+
+# In[29]:
+
+
+if category == 'spv': 
+    df_characters_and_avg_wpm_by_hour = df_tr.pivot_table(
+    index = 'Start Hour', values = ['Characters', 'WPM'], 
+    aggfunc = {'Characters':'sum',
+    'WPM':'mean'}).reset_index().rename(
+    columns = {'Start Hour':'Starting Hour'})
+    df_characters_and_avg_wpm_by_hour['Starting Hour'] = (
+    df_characters_and_avg_wpm_by_hour['Starting Hour'].astype('str'))
+    df_characters_and_avg_wpm_by_hour
+
+
+# In[30]:
+
+
+if category == 'spv': 
+    fig_chars_by_hour = px.bar(df_characters_and_avg_wpm_by_hour, 
+    x = 'Starting Hour', y = 'Characters', text_auto = ',.0f',
+    title = 'Characters Typed by Starting Hour')
+    fig_chars_by_hour.write_html(
+    f'{sp_visualizations_folder}chars_by_hour.html',
+    include_plotlyjs = 'cdn')
+    fig_chars_by_hour
+
+
+# In[31]:
+
+
+if category == 'spv': 
+    fig_wpm_by_hour = px.bar(df_characters_and_avg_wpm_by_hour, 
+    x = 'Starting Hour', y = 'WPM', text_auto = '.3f',
+    title = 'Average WPM by Starting Hour', subtitle = '(Colors reflect the \
+total number of characters typed that hour)',
+    color = 'Characters')
+    fig_wpm_by_hour.write_html(
+    f'{sp_visualizations_folder}wpm_by_hour.html',
+    include_plotlyjs = 'cdn')
+    fig_wpm_by_hour
 
 
 # ### Average WPM by Tag 1, Tag 2, and Tag 3 values:
 
-# In[27]:
+# In[32]:
 
 
 if category == 'spv': 
@@ -757,8 +828,9 @@ if category == 'spv':
             # following line from raising an error.
             fig_wpm_by_tag = px.bar(df_wpm_by_tag, x = tag, y = 'WPM',
                                  title = f'Mean WPM by {tag} value',
+                                text_auto = '.3f',
                                    hover_data = 'Tests')
-            fig_wpm_by_tag.write_html(f'{sp_visualizations_folder}/Mean_\
+            fig_wpm_by_tag.write_html(f'{sp_visualizations_folder}Mean_\
 WPM_by_{tag}.html', include_plotlyjs = 'cdn')
 
 
@@ -768,7 +840,7 @@ WPM_by_{tag}.html', include_plotlyjs = 'cdn')
 # 
 # (I commented out the following visualization code because it relies on a very inefficient set of code that I have also commented out.)
 
-# In[28]:
+# In[33]:
 
 
 # for col in [pair[0] for pair in col_seconds_pair_list]:
@@ -790,10 +862,11 @@ WPM_by_{tag}.html', include_plotlyjs = 'cdn')
 
 # #### Visualizing clock-based endurance statistics:
 
-# In[29]:
+# In[34]:
 
 
 if category == 'spv':
+    print("Analyzing endurance data.")
     for time_category in ['Hour', '30-Minute Block', '15-Minute Block',
                           '10-Minute Block']:
         # The following code helps confirm that the following query() statement
@@ -809,7 +882,7 @@ if category == 'spv':
         
         fig_endurance = px.bar(
         df_endurance, x = f'Unique {time_category}', 
-        y = 'Characters',
+        y = 'Characters', text_auto = ',.0f',
         title = 'Most Characters Typed By ' + time_category,
         hover_data = 'Rank')
         
@@ -819,9 +892,65 @@ Clock_'+time_category.replace(' ', '_')+'.html',
         include_plotlyjs = 'cdn')
 
 
+# In[35]:
+
+
+if category == 'spv':
+    df_yyyy_mm_stats = df_tr.query(
+        "`Start Year and Month` == `End Year and Month`").pivot_table(
+        index = 'Start Year and Month', values = ['Characters', 'WPM'], 
+        aggfunc = {'Characters':'sum', 'WPM':'mean'}).reset_index()
+    df_yyyy_mm_stats
+
+
+# In[36]:
+
+
+if category == 'spv':
+    fig_yyyy_mm_characters = px.line(
+        df_yyyy_mm_stats, x = 'Start Year and Month',
+                                    y = 'Characters')
+    fig_yyyy_mm_characters.update_layout(xaxis_type = 'category',
+    xaxis_title = None,
+    title = 'Characters Typed by Starting Year and Month')
+    fig_yyyy_mm_characters.write_html(
+    f'{sp_visualizations_folder}Characters_\
+typed_by_year_and_month.html', include_plotlyjs = 'cdn')
+
+
+# In[37]:
+
+
+if category == 'spv':
+    fig_yyyy_mm_most_characters = px.bar(
+    df_yyyy_mm_stats.sort_values('Characters', ascending = False), 
+    x = 'Start Year and Month',
+    y = 'Characters', text_auto = ',.0f')
+    fig_yyyy_mm_most_characters.update_layout(xaxis_type = 'category',
+    xaxis_title = None,
+    title = 'Months by characters typed')
+    fig_yyyy_mm_most_characters.write_html(
+    f'{sp_visualizations_folder}Most_characters_\
+typed_by_year_and_month.html', include_plotlyjs = 'cdn')
+
+
+# In[38]:
+
+
+if category == 'spv':
+    fig_yyyy_mm_wpm = px.line(
+        df_yyyy_mm_stats, x = 'Start Year and Month',
+                                    y = 'WPM')
+    fig_yyyy_mm_wpm.update_layout(xaxis_type = 'category',
+    xaxis_title = None,
+    title = 'Mean WPM by Starting Year and Month')
+    fig_yyyy_mm_wpm.write_html(f'{sp_visualizations_folder}avg_wpm_by_\
+year_and_month.html', include_plotlyjs = 'cdn')
+
+
 # Graphing keypresses by date (in both chronological and ranked order):
 
-# In[30]:
+# In[39]:
 
 
 if category == 'spv':
@@ -835,30 +964,32 @@ if category == 'spv':
     # despite our having sorted the source DataFrame by characters.
     fig_keypresses_by_date = px.bar(df_top_dates_by_keypresses,
                                          x = 'Start Date', y = 'Characters',
+                                    text_auto = ',.0f',
                                   title = 'Characters typed by date',
                                    hover_data = ['Rank'])
     fig_keypresses_by_date.write_html(f'{sp_visualizations_folder}Keypresses\
 _Typed_by_Date.html', include_plotlyjs='cdn')
 
 
-# In[31]:
+# In[40]:
 
 
 if category == 'spv':
     fig_top_dates_by_keypresses = px.bar(
         df_top_dates_by_keypresses.head(50),
            x = 'Start Date', y = 'Characters',
+        text_auto = ',.0f',
            title = 'Dates with the most characters typed', 
            hover_data = ['Rank']).update_layout(
         xaxis_type = 'category')
     fig_top_dates_by_keypresses.write_html(
-        f'{sp_visualizations_folder}/Top_Dates_by_Keypresses.html', 
+        f'{sp_visualizations_folder}Top_Dates_by_Keypresses.html', 
         include_plotlyjs='cdn')
 
 
-# ### Calculating mean WPMs by test number:
+# ### Calculating mean WPM by test number:
 
-# In[32]:
+# In[41]:
 
 
 if category == 'spv':
@@ -872,7 +1003,7 @@ if category == 'spv':
     df_mean_wpm_by_within_session_test_number
 
 
-# In[33]:
+# In[42]:
 
 
 if category == 'spv':
@@ -883,13 +1014,13 @@ if category == 'spv':
         hover_data = 'Number of tests').update_layout(
         xaxis_title = 'Within-session test number')
     fig_mean_wpm_by_within_session_test_number.write_html(
-        f'{sp_visualizations_folder}/Mean_WPM_by_Within_\
+        f'{sp_visualizations_folder}Mean_WPM_by_Within_\
 Session_Test_Number.html', 
         include_plotlyjs='cdn')
     #fig_mean_wpm_by_within_session_test_number
 
 
-# In[34]:
+# In[43]:
 
 
 if category == 'spv':
@@ -902,7 +1033,7 @@ Within-Session Test Number").update_traces(
         mode = 'markers+lines').update_layout(showlegend = False,
         xaxis_title = 'Within-session test number')
     fig_wpm_by_session_num_comparison.write_html(
-        f'{sp_visualizations_folder}/WPM_by_Within_Session_\
+        f'{sp_visualizations_folder}WPM_by_Within_Session_\
 Test_Number.html', 
         include_plotlyjs='cdn')
     # fig_wpm_by_session_num_comparison
@@ -910,10 +1041,11 @@ Test_Number.html',
 
 # ### Accuracy analyses:
 
-# In[35]:
+# In[44]:
 
 
 if category == 'spv':
+    print("Analyzing accuracy data.")
     df_wpm_by_error_rate = df_tr.pivot_table(
         index = 'Error_and_Backspace_Rate', 
         values = 'WPM', aggfunc = 'mean').reset_index()
@@ -923,7 +1055,7 @@ if category == 'spv':
 # 
 # (The `duplicates = drop` component prevents the code from raising an error if two or more bins have the same group (which can happen, for instance, if error-free races account for a large percentage of your overall races).
 
-# In[36]:
+# In[45]:
 
 
 if category == 'spv':
@@ -939,7 +1071,7 @@ if category == 'spv':
 # 
 # (Note that using DataFrameGroupBy (https://pandas.pydata.org/docs/dev/reference/api/pandas.core.groupby.DataFrameGroupBy.rolling.html) reorders the dataset and thus won't be an ideal method.)
 
-# In[37]:
+# In[46]:
 
 
 if category == 'spv':
@@ -952,16 +1084,16 @@ rate bin'] = df_tr.groupby(
     fig_rolling_wpm_by_error_rate = px.line(df_tr, x = 'Chronological test number',
             y = '10-race rolling WPM for error/backspace rate bin', 
     color = 'Error/backspace rate bin',
-           title = 'Rolling 10-Race WPMs by Error + Backspace\
+           title = 'Rolling 10-Race WPM by Error + Backspace \
 Rate Bin').update_layout(
         yaxis_title = '10-race rolling WPM')
     
     fig_rolling_wpm_by_error_rate.write_html(
-    f'{sp_visualizations_folder}/Mean_Rolling_WPM_\
+    f'{sp_visualizations_folder}Mean_Rolling_WPM_\
 by_accuracy_bin.html', include_plotlyjs = 'cdn')
 
 
-# In[38]:
+# In[47]:
 
 
 if category == 'spv':
@@ -978,30 +1110,33 @@ if category == 'spv':
            text_auto = '.2f',
     title = 'Mean WPM by Accuracy Bin')
     fig_mean_wpm_by_error_rate.write_html(
-    f'{sp_visualizations_folder}/Mean_WPM_by_accuracy_bin.html', 
+    f'{sp_visualizations_folder}Mean_WPM_by_accuracy_bin.html', 
     include_plotlyjs = 'cdn')
 
 
 # ### Analyzing word-level results:
 
-# In[39]:
+# In[48]:
 
 
 if category == 'spv':
+    print("Analyzing word-level data.")
     df_wr = pd.read_csv('../Files/word_results.csv')
     df_wr['Count'] = 1
 
 
-# Creating a table of frequently-typed words by average WPM:
+# Creating a table of words typed at least 10 times by average WPM:
 
-# In[40]:
+# In[49]:
 
 
 if category == 'spv':
+    words_to_remove = ['s'] # This list will contain any 'words', such 
+    # as 's', that shouldn't be counted as actual words.
     df_mean_wpm_by_word = df_wr.pivot_table(
     index = 'Word', values = ['WPM', 'Count'],
     aggfunc = {'WPM':'mean', 'Count':'count'}).reset_index()
-    words_to_remove = ['s']
+    
     df_mean_wpm_by_word.query("Count >= 10 & Word not in @words_to_remove",
                              inplace = True)
     df_mean_wpm_by_word.sort_values('WPM', ascending = False, 
@@ -1009,35 +1144,187 @@ if category == 'spv':
     df_mean_wpm_by_word
 
 
-# In[41]:
+# In[50]:
 
 
 if category == 'spv':
-    fig_highest_word_level_wpms = px.bar(df_mean_wpm_by_word.head(50), 
+    fig_highest_word_level_wpm = px.bar(df_mean_wpm_by_word.head(50), 
            x = 'Word', y = 'WPM', text_auto = '.2f',
           hover_data = 'Count',
-          title = 'Highest word-level mean WPMs for words \
+          title = 'Highest word-level mean WPM for words \
 typed at least 10 times')
-    fig_highest_word_level_wpms.write_html(
-    f'{sp_visualizations_folder}/words_with_highest_wpms.html', 
+    fig_highest_word_level_wpm.write_html(
+    f'{sp_visualizations_folder}words_with_highest_wpm.html', 
     include_plotlyjs = 'cdn')
 
 
-# In[42]:
+# In[51]:
 
 
 if category == 'spv':
-    fig_lowest_word_level_wpms = px.bar(df_mean_wpm_by_word.sort_values(
+    fig_lowest_word_level_wpm = px.bar(df_mean_wpm_by_word.sort_values(
     'WPM').head(50), x = 'Word', y = 'WPM', text_auto = '.2f',
           hover_data = 'Count',
-          title = 'Lowest word-level mean WPMs for words typed at least 10 \
-    times')
-    fig_lowest_word_level_wpms.write_html(
-    f'{sp_visualizations_folder}/words_with_lowest_wpms.html', 
+          title = 'Lowest word-level mean WPM for words typed at least 10 \
+times')
+    fig_lowest_word_level_wpm.write_html(
+    f'{sp_visualizations_folder}words_with_lowest_wpm.html', 
     include_plotlyjs = 'cdn')
 
 
-# In[43]:
+# Analyzing word-level accuracy data:
+
+# In[52]:
+
+
+if category == 'spv': 
+    df_wr['Typed Correctly'] = np.where(df_wr['Error_and_Backspace_Rate'] == 0, 1, 0)
+
+    df_wr_acc_wpm = df_wr.pivot_table(
+    index = 'Word', values = ['Count', 'Typed Correctly', 'WPM'], 
+    aggfunc = {'Count':'sum', 'Typed Correctly':'mean', 'WPM':'mean'}).query(
+    "Word not in @words_to_remove").reset_index()
+    df_wr_acc_wpm['Error-free %'] = df_wr_acc_wpm['Typed Correctly'] * 100
+
+
+# Sorting words typed at least 10 times by error-free rate and count, then creating a graph of the top 100 words in this list:
+
+# In[53]:
+
+
+if category == 'spv':
+    fig_wr_high_acc = px.bar(df_wr_acc_wpm.query("Count >= 10").sort_values(
+    ['Error-free %', 'Count'], ascending = False).iloc[0:100],
+    x = 'Word', y = 'Error-free %', color = 'Count',
+    title = "Words typed at least 10 times by error-free % (in descending order) and count")
+    fig_wr_high_acc.write_html(
+    f'{sp_visualizations_folder}high_accuracy_words.html', 
+    include_plotlyjs = 'cdn')
+
+
+# Using a similar process to create a list of frequently-typed words with the *lowest* accuracy ratings:
+
+# In[54]:
+
+
+if category == 'spv':
+    fig_wr_low_acc = px.bar(df_wr_acc_wpm.query("Count >= 10").sort_values(
+    ['Error-free %', 'Count'], ascending = [True, False]).iloc[0:100],
+    x = 'Word', y = 'Error-free %', color = 'Count',
+    title = "Words typed at least 10 times by error-free % (in ascending order) and count")
+    fig_wr_low_acc.write_html(
+    f'{sp_visualizations_folder}low_accuracy_words.html', 
+    include_plotlyjs = 'cdn')
+
+
+# In[55]:
+
+
+if category == 'spv':
+    fig_wr_acc_wpm = px.scatter(df_wr_acc_wpm.query(
+    "Count >= 10"), x = 'Error-free %', y = 'WPM',
+              hover_data = ['Word', 'Count'], color = 'Count',
+              title = 'WPM by Error-free % for Words Typed at Least 10 Times')
+    fig_wr_acc_wpm.write_html(
+    f'{sp_visualizations_folder}word_accuracy_wpm_scatter.html', 
+    include_plotlyjs = 'cdn')
+
+
+# In[56]:
+
+
+if category == 'spv':
+    fig_most_frequent_words = px.bar(
+    df_wr_acc_wpm.sort_values('Count', ascending = False).iloc[0:200],
+    x = 'Word', y = 'Count', color = 'WPM', text_auto = 'Count',
+    title = '200 Most Frequently-typed Words')
+    fig_most_frequent_words.write_html(
+    f'{sp_visualizations_folder}words_typed_most_frequently.html', 
+    include_plotlyjs = 'cdn')
+
+
+# ## Overall progress analyses:
+
+# In[57]:
+
+
+if category == 'spv':
+    print("Analyzing overall progress data.")
+    df_Bible = pd.read_csv('../Files/CPDB_for_TTTB.csv')
+    df_Bible['Typed'] = np.where(df_Bible['Tests'] >= 1, 1, 0)
+    df_Bible.rename(columns = {'Characters':'Total Characters'}, inplace = True)
+    df_Bible['Typed Characters'] = df_Bible['Typed'] * df_Bible['Total Characters']
+    df_Bible
+
+
+# In[58]:
+
+
+if category == 'spv':
+    df_progress = df_Bible.pivot_table(
+    index = ['Book_Num', 'Book'], values = [
+    'Typed Characters', 'Total Characters'], aggfunc = 'sum').reset_index()
+    df_progress['% Typed'] = 100*(df_progress['Typed Characters'] 
+                                  / df_progress['Total Characters'])
+    df_progress
+
+
+# In[59]:
+
+
+if category == 'spv':
+    fig_pct_progress = px.bar(df_progress, x = 'Book', y = '% Typed',
+    title = 'Books of the Bible by % of Characters Typed', text_auto = '.1f',
+    color = '% Typed')
+    fig_pct_progress.write_html(
+    f'{sp_visualizations_folder}Progress_percentage.html', 
+    include_plotlyjs = 'cdn')
+
+
+# In[60]:
+
+
+if category == 'spv':
+    fig_progress = px.bar(df_progress, x = 'Book', y = ['Total Characters', 'Typed Characters'],
+    title = 'Books of the Bible by Total Characters and Characters Typed', text_auto = '.0f', barmode = 'overlay',
+    opacity = 1).update_layout(legend_title = 'Metric')
+    fig_progress.write_html(
+    f'{sp_visualizations_folder}Progress_nominal.html', 
+    include_plotlyjs = 'cdn')
+
+
+# In[61]:
+
+
+if category == 'spv':
+    # Creating a 'Column' argument that can be used as the x-axis value
+    # for an upcoming chart:
+    df_Bible['Column'] = df_Bible['Verse_ID'] % round(
+        np.sqrt(len(df_Bible)), 0)
+    df_Bible['Count'] = 1 # This will serve as our upcoming chart's
+    # Y-axis value.
+
+
+# Creating a bar chart that shows whether or not each verse has been typed: (Verses can be identified by hovering over them. This chart isn't as practical as the others, but it's still fun to look at. :)
+
+# In[62]:
+
+
+if category == 'spv':
+    fig_typed_verses = px.bar(df_Bible, x = 'Column', y = 'Count', 
+    color = 'Typed',
+    hover_data = ['Verse_ID', 'Verse_Code'], title = 'Typed verses').update_layout(coloraxis_showscale = False,
+    paper_bgcolor = 'black',
+    plot_bgcolor = 'black',
+    xaxis_visible = False,
+    yaxis_visible=False,
+    )
+    fig_typed_verses.write_html(
+    f'{sp_visualizations_folder}Typed_verses.html', 
+    include_plotlyjs = 'cdn')
+
+
+# In[63]:
 
 
 if category == 'spv':

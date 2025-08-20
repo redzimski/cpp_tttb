@@ -45,66 +45,14 @@ otherwise, output may not appear.
 // Programming: Principles and Practice Using C++
 // by Bjarne Stroustrup.
 
+This game is dedicated to my wife, Allie. I am very grateful
+for her patience and understanding as I worked to put it 
+together! My multiplayer gameplay sessions with her (yes, she 
+was kind enough to play it with me) also helped me refine the
+code and improve the OSX release.
+
 Blessed Carlo Acutis, pray for us!
 
-To dos (very incomplete list)!
-
-
-    3. Add documentation that explains your multiplayer-file-combination
-    feature and provides suggested instructions for this game mode 
-    (e.g. using 
-    an online storage option or a local NAS hard drive to collect 
-    results from each player).
-
-
-    5. Update the game so that, following a crash, you'll have the 
-        option to manually to load your autosave results
-        into your main results files. (You'll be able to detect a crash by 
-        the presence of the autosave results files, provided that
-        you delete these files after the normal end to a game.
-        (Note: this is optional--as players can also simply
-        copy and paste data into the original files. However,
-        you might want to suggest that they do so using LibreOffice
-        calc in order to ensure that Excel doesn't make unwanted
-        modifications to the timestamps contained within those
-        files.) Note: now that you've created code for importing
-        multiplayer results into single-player results, creating
-        a partially-automated autosave process should be quite
-        straightforward.
-
-
-    6. Continue working on stats code. In particular:
-
-        a. Add in more word-level stats, such as accuracy data 
-        (including words with the highest and lowest accuracy 
-        ranges). 
-
-        b. Add in tree maps and/or bar charts that compare the 
-        number of characters you've typed for each Bible chapter
-        with the total number of characters in that chapter
-
-
-    7. Update Readme with gameplay + compilation information. Note
-    that you should consider disabling the build-shared-library 
-    options for cpp-terminal, and that you may need to change
-    the minimum C++ versions for certain libraries to C++ 17. 
-    (Also: it may not actually be necessary to build the third-party
-    libraries independently before you incorporate them into your
-    own project; consider testing out a build in which you only
-    run the build command for TTTB.)
-
-    8. Add more documentation to this file as needed.
-
-    9. Create binaries within Linux, Windows, and Mac, then go
-    ahead and publish your game on itch.io and publicize it within
-    various relevant communities. You could even get an ad
-    in the St. Thomas Aquinas bulletin for it!
-
-    10. Create a YouTube video that describes this project and 
-    provides a gameplay example.
-
-    11. Also consider creating a YouTube video that shows all
-    the steps involved in building TTTB.
 
 */
 
@@ -313,12 +261,14 @@ struct Game_Config
 // Defining a struct that will allow me to keep track of
 // the amount of time, in microseconds, the game needs to process
 // individual keypresses:
-struct Keypress_Processing_Time_Row
-{
-    long test_number;
-    int keypress_number;
-    long processing_time_in_microseconds;
-};
+// (Note: I've since commented this code out, as it was 
+// meant for testing/debugging purposes.)
+// struct Keypress_Processing_Time_Row
+// {
+//     long test_number;
+//     int keypress_number;
+//     long processing_time_in_microseconds;
+// };
 
 std::string cooked_input_within_raw_mode(
     std::string prompt = "", bool multiline=false)
@@ -668,7 +618,7 @@ bool run_test(
     long& test_number, long& session_number, 
     int& within_session_test_number, 
     const bool allow_quitting,
-    std::vector<Keypress_Processing_Time_Row> &kptrv,
+    //std::vector<Keypress_Processing_Time_Row> &kptrv,
     std::string& within_test_update_message)
 /* This function allows the player to complete a single typing test.
 It then updates the verse_row, trrv, and wrrv vectors with the results
@@ -679,7 +629,7 @@ of that test.
     https://github.com/jupyter-xeus/cpp-terminal/blob/
     master/examples/keys.cpp .*/
 
-    int keypress_counter = 0; // Currently, this value is only
+    //int keypress_counter = 0; // Currently, this value is only
     // being used to keep track of keypress processing times.
 
     // Creating a Keypress Processing Time Row vector that will
@@ -691,7 +641,7 @@ of that test.
     // until the test has been complete. (Otherwise, we might end
     // up assigning incorrect test result names to keypresses
     // in cases when players quit tests early.)
-    std::vector<Keypress_Processing_Time_Row> local_kptrv;
+    //std::vector<Keypress_Processing_Time_Row> local_kptrv;
 
 
     // Calling gen_word_result_map() to create a map that contains
@@ -834,9 +784,6 @@ the space bar to begin the typing test and 'e' to cancel it."
     // I've also found that ending Term::cout lines with "\n" may
     // not work; instead, it may be necessary to use std::endl .
 
-    // Term::cout << Term::cursor_move(1, 1) << Term::clear_screen() 
-    // << Term::terminal.clear()  << verse_row.verse << std::endl;
-
     // Moving the cursor to the starting row for the player's response,
     // then clearing out all text already on or beneath it:
     // Note: \033[J is an 'erase in display' ANSI escape code
@@ -909,7 +856,7 @@ the space bar to begin the typing test and 'e' to cancel it."
         case Term::Event::Type::Key:
         {
             Term::Key key(event);
-            keypress_counter++;
+            //keypress_counter++;
             // Creating a timer following this keypress:
             // (This will be useful for timing how long it took the user
             // to type each individual word.)
@@ -1146,13 +1093,13 @@ word_map[latest_first_character_index].error_and_backspace_rate =
             auto processing_end_time = std::chrono::
             high_resolution_clock::now();
 
-            // Seeing how long it took the code to process the 
-            // player's keypress:
-            // This code was based on the example found at
-            // https://en.cppreference.com/w/cpp/chrono/duration/duration_cast.html .
-            auto processing_microseconds = std::chrono::duration<
-            double, std::micro>(
-                processing_end_time - keypress_time).count();
+            //// Seeing how long it took the code to process the 
+            //// player's keypress:
+            //// This code was based on the example found at
+            //// https://en.cppreference.com/w/cpp/chrono/duration/duration_cast.html .
+            // auto processing_microseconds = std::chrono::duration<
+            // double, std::micro>(
+            //     processing_end_time - keypress_time).count();
 
             // The following line shows the latest keypress 
             // processing time value directly below the player's
@@ -1161,11 +1108,11 @@ word_map[latest_first_character_index].error_and_backspace_rate =
             // hasn't since been commented out).
             // Term::cout << processing_microseconds << std::endl;
 
-            Keypress_Processing_Time_Row kptr;
-            kptr.keypress_number = keypress_counter;
-            kptr.processing_time_in_microseconds = (
-            processing_microseconds);
-            local_kptrv.push_back(kptr);
+            // Keypress_Processing_Time_Row kptr;
+            // kptr.keypress_number = keypress_counter;
+            // kptr.processing_time_in_microseconds = (
+            // processing_microseconds);
+            // local_kptrv.push_back(kptr);
                 
 
 
@@ -1312,18 +1259,18 @@ including backspaces)."
             wrrv.push_back(wrr);
         }
 
-        // Now that we've completed our test, we can add the local
-        // keypress processing time to our main vector:
-        for (auto kptr: local_kptrv)
-        {
-        // Adding test_number attribute to kptr: 
-        // (We could have done this while the player was completing
-        // the test, but we would have had to increment it by 1
-        // since the value hadn't yet been updated to reflect
-        // the completed test.)
-        kptr.test_number = test_number;
-        kptrv.push_back(kptr);
-        }
+        // // Now that we've completed our test, we can add the local
+        // // keypress processing time to our main vector:
+        // for (auto kptr: local_kptrv)
+        // {
+        // // Adding test_number attribute to kptr: 
+        // // (We could have done this while the player was completing
+        // // the test, but we would have had to increment it by 1
+        // // since the value hadn't yet been updated to reflect
+        // // the completed test.)
+        // kptr.test_number = test_number;
+        // kptrv.push_back(kptr);
+        // }
         
 
 
@@ -1677,9 +1624,6 @@ std::vector<Word_Result_Row> import_word_results(
     return std::move(wrrv);
 }
 
-
-
-
 void export_test_results(const std::vector<Test_Result_Row> &trrv,
                          const std::string &test_results_file_path,
                          bool include_header_row = false,
@@ -1857,56 +1801,56 @@ if (include_header_row == true)
 }
 
 
-void export_keypress_processing_times(
-    const std::vector<Keypress_Processing_Time_Row> &kptrv,
-    const std::string &keypress_processing_time_file_path,
-    bool include_header_row = false,
-    bool autosave_mode = false)
-// This function is similar to export_test_results except that it
-// saves keypress_processing_time-level rather than test-level results.
-{
+// void export_keypress_processing_times(
+//     const std::vector<Keypress_Processing_Time_Row> &kptrv,
+//     const std::string &keypress_processing_time_file_path,
+//     bool include_header_row = false,
+//     bool autosave_mode = false)
+// // This function is similar to export_test_results except that it
+// // saves keypress_processing_time-level rather than test-level results.
+// {
 
-    auto kptrv_export_start_time = std::chrono::
-        high_resolution_clock::now();
+//     auto kptrv_export_start_time = std::chrono::
+//         high_resolution_clock::now();
 
-    std::ios_base::openmode write_mode = std::ios::app;
+//     std::ios_base::openmode write_mode = std::ios::app;
 
-    if (autosave_mode == true)
-        {write_mode = std::ios::trunc;}
+//     if (autosave_mode == true)
+//         {write_mode = std::ios::trunc;}
     
-    std::ofstream keypress_processing_time_results_ofstream{
-        keypress_processing_time_file_path, write_mode};
+//     std::ofstream keypress_processing_time_results_ofstream{
+//         keypress_processing_time_file_path, write_mode};
     
-    auto keypress_processing_time_results_writer = make_csv_writer(
-        keypress_processing_time_results_ofstream);
+//     auto keypress_processing_time_results_writer = make_csv_writer(
+//         keypress_processing_time_results_ofstream);
 
-if (include_header_row == true)
-    {std::vector<std::string> header_row = {
-        "Test_Number",
-        "Keypress_Number",
-        "Processing_Time"};
+// if (include_header_row == true)
+//     {std::vector<std::string> header_row = {
+//         "Test_Number",
+//         "Keypress_Number",
+//         "Processing_Time"};
 
-    // Writing this header to the .csv file:
-    keypress_processing_time_results_writer << header_row;
-    }
+//     // Writing this header to the .csv file:
+//     keypress_processing_time_results_writer << header_row;
+//     }
 
-    for (int i = 0; i < kptrv.size(); ++i)
-    {
-        std::vector<std::string> cols_as_strings = {
-            std::to_string(kptrv[i].test_number),
-            std::to_string(kptrv[i].keypress_number),
-            std::to_string(kptrv[i].processing_time_in_microseconds)};
-        keypress_processing_time_results_writer << cols_as_strings;
-    };
+//     for (int i = 0; i < kptrv.size(); ++i)
+//     {
+//         std::vector<std::string> cols_as_strings = {
+//             std::to_string(kptrv[i].test_number),
+//             std::to_string(kptrv[i].keypress_number),
+//             std::to_string(kptrv[i].processing_time_in_microseconds)};
+//         keypress_processing_time_results_writer << cols_as_strings;
+//     };
 
-    auto kptrv_export_end_time = std::chrono::
-        high_resolution_clock::now();
-    auto kptrv_export_seconds = std::chrono::duration<double>(
-    kptrv_export_end_time - kptrv_export_start_time).count();
-    Term::cout << "Exported " << kptrv.size() << " keypress \
-processing durations in " << kptrv_export_seconds << " seconds." 
-<< std::endl;   
-}
+//     auto kptrv_export_end_time = std::chrono::
+//         high_resolution_clock::now();
+//     auto kptrv_export_seconds = std::chrono::duration<double>(
+//     kptrv_export_end_time - kptrv_export_start_time).count();
+//     Term::cout << "Exported " << kptrv.size() << " keypress \
+// processing durations in " << kptrv_export_seconds << " seconds." 
+// << std::endl;   
+// }
 
 
 void export_verses(const std::vector<Verse_Row> &vrv,
@@ -2070,7 +2014,7 @@ void run_single_player_game(std::string py_complement_name)
     std::vector<Test_Result_Row> trrv; // trrv is short for
     // 'Test result row vector.'
     
-    std::vector<Keypress_Processing_Time_Row> kptrv; // kptrv is 
+    //std::vector<Keypress_Processing_Time_Row> kptrv; // kptrv is 
     // short for 'Keypress processing time row vector.'
 
     std::string test_results_file_path = "../Files/test_results.csv";
@@ -2082,8 +2026,8 @@ autosaved_test_results.csv";
     // 'Word result row vector.'
 
     std::string word_results_file_path = "../Files/word_results.csv";
-    std::string keypress_processing_time_file_path = (
-        "../Files/keypress_processing_time.csv");
+    // std::string keypress_processing_time_file_path = (
+    //     "../Files/keypress_processing_time.csv");
     std::string autosaved_word_results_file_path = "../Files/\
 autosaved_word_results.csv";
 
@@ -2433,7 +2377,9 @@ from which to start this mode." << std::endl;
                 gcf.player, gcf.mode, gcf.tag_1, gcf.tag_2, gcf.tag_3,
                 gcf.notes, test_number, session_number,
                 within_session_test_number,
-                true, kptrv, within_test_update_message);
+                true, 
+                //kptrv, 
+                within_test_update_message);
             // The following code will exit a user out of either marathon
             // mode if he/she did not complete the most recent test.
             // It will also cause the pre-test menu to reappear
@@ -2490,9 +2436,9 @@ from which to start this mode." << std::endl;
     export_word_results(wrrv, word_results_file_path,
     false, false);
 
-    export_keypress_processing_times(kptrv, 
-    keypress_processing_time_file_path, 
-    false, false);
+    // export_keypress_processing_times(kptrv, 
+    // keypress_processing_time_file_path, 
+    // false, false);
 
 // Calculating single-player stats:
 
@@ -2857,7 +2803,7 @@ randomly-selected verses.)" << std::endl;
 
     std::vector<Word_Result_Row> wrrv;
     std::vector<Test_Result_Row> trrv;
-    std::vector<Keypress_Processing_Time_Row> kptrv;
+    //std::vector<Keypress_Processing_Time_Row> kptrv;
 
     std::map<std::string, std::vector<double>> mp_results_map;
     // Map that will be used to calculate players' average WPMs
@@ -2964,7 +2910,8 @@ continue. (The test won't start just yet.)" << std::endl;
                     vrv[verse_index_to_type], trrv, wrrv, marathon_mode,
                     mgcf.player, mgcf.mode, mgcf.tag_1, mgcf.tag_2, 
                     mgcf.tag_3, mgcf.notes, test_number, session_number,
-                    within_session_test_number, true, kptrv, 
+                    within_session_test_number, true, 
+                    // kptrv, 
                     within_test_update_message); 
                     // The 'true' argument here governs the 
                     // 'allow_quitting' parameter. I had
@@ -3397,8 +3344,10 @@ std::string py_complement_name = "";
     for (int i = 0; i < background_color_codes.size(); i++)
     {Term::cout << background_color_prefix + 
     background_color_codes[i] + background_color_suffix;}
-    Term::cout << std::endl << "Welcome to the C++ Edition of \
-Type Through the Bible!" << std::endl;
+    Term::cout << std::endl << "Welcome to Version 1.0 of the \
+C++ Edition of \
+Type Through the Bible!\nPlease review the Readme for important \
+gameplay instructions." << std::endl;
 
     std::string game_exit_message = "Exiting Type Through \
 the Bible.";
