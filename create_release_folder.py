@@ -145,17 +145,19 @@ shutil.copytree('build/_internal', release_folder+'build/_internal')
 
 
 # Copying Markdown and PDF versions of Readme over to release folder:
+# 
+# (I commented out this option because I decided to share the Readme as a separate file instead. That way, I wouldn't have to create new zip files of release folders, each hundreds of megabytes in size, for distribution on itch.io just because I updated the game's instructions.)
 
-# In[16]:
-
-
-shutil.copy('README.md',
-            release_folder+'README.md')
-shutil.copy('README.pdf',
-            release_folder+'README.pdf')
+# In[13]:
 
 
-# In[ ]:
+# shutil.copy('README.md',
+#             release_folder+'README.md')
+# shutil.copy('README.pdf',
+#             release_folder+'README.pdf')
+
+
+# In[14]:
 
 
 print(f"Clean copy of TTTB can now be found at:\n{release_folder}")
