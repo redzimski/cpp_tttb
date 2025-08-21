@@ -456,10 +456,10 @@ int select_verse_id(const std::vector<Verse_Row> &vrv,
     std::string id_response_as_str = "";
     while (true)
     {
-        Term::cout << "Enter the ID of the verse that you would like \
-to type. This ID can be found in the first column of \
-the CPDB_for_TTTB.csv file. To exit out of this option, \
-type -1." << std::endl;
+        Term::cout << "Type in the ID of the verse that you would \
+like to type, then hit Enter. This ID can be found in the first \
+column of the CPDB_for_TTTB.csv file. To exit out of this option, \
+type -1 followed by Enter." << std::endl;
         // Checking for a valid response:
         id_response_as_str = cooked_input_within_raw_mode();
         try
@@ -2215,25 +2215,12 @@ races is " + std::to_string(last_10_wpm_mean) + ".\n";
         // within the next run_test() call.
             {Term::cout << progress_message << std::endl;
 
-            Term::cout << "Enter 'n' to type the next untyped verse; \
-'c' to type the next verse; and 'i' to type a specific verse ID.\n\
-If you would like to skip this prompt but not start tests \
-automatically, enter N (to automatically get directed to the \
-next untyped verse); C (to automatically get directed to the \
-next next verse); or I (to select a verse from which to begin, then \
-automatically get directed to the verses that follow it).\n\
-To enter 'untyped marathon mode' \
-(in which you will continually be presented with the next \
-untyped verse until you exit out of a race), press 'm.'\n\
-To enter 'sequential marathon mode', in which you will continually \
-be asked to type (1) the verse following the one you just typed or \
-(2) (when starting this mode) a verse of your choice, enter 's.'\nTo \
-update game configuration settings, enter 'u'. Finally, to \
-exit this session and save your progress, enter 'e'."
-                       << std::endl;
+            Term::cout << "Choose your desired game mode by typing \
+'n', 'c', 'i', 'N', 'C', 'I', 'm', 's', 'u', or 'e'. Press 'h' for \
+descriptions of these options." << std::endl;
 
             user_response = get_single_keypress({"n", "c", "i",
-            "m", "s", "u", "e", "N", "C", "I"});
+            "m", "s", "u", "e", "N", "C", "I", "h"});
         }
         }
         // Instructing the game to show progress messages within 
@@ -2245,6 +2232,31 @@ exit this session and save your progress, enter 'e'."
     else
     {
         show_update_within_run_test = false;}
+
+        if (user_response == "h") // This choice will display more 
+        // information about each game mode; the user will then 
+        // be taken back to the start of the main gameplay loop.
+
+        {Term::cout << "Description of game modes:\n\
+'n'\tType the next untyped verse, then return to the gameplay menu.\n\
+'c'\tType the next verse, then return to the gameplay menu.\n\
+'i'\tType a specific verse ID, then return to the gameplay menu.\n\
+'N'\tAutomatically get directed to the next untyped verse.\n\
+'C'\tAutomatically get directed to the next verse.\n\
+'I'\tSelect a verse from which to begin, then \
+automatically get directed to the verses that follow it.\n\
+'m'\tEnter 'untyped marathon mode,' in which you will immediately \
+start a test for the next untyped verse after finishing the current \
+test.\n\
+'s'\tEnter 'sequential marathon mode,' in which you will immediately \
+start (1) the verse following the one you just typed or \
+(2) (when starting this mode) a verse of your choice.\n\
+'u'\tUpdate game configuration settings.\n\
+'e'\tExit this session and save your progress.\n\
+Also remember that you can exit out of any test, even in marathon \
+mode, by pressing Ctrl+C." << std::endl;
+    }
+
 
         if (user_response == "u") // This option will allow the user
         // to update game configuration settings for the current session.
@@ -2450,8 +2462,8 @@ from which to start this mode." << std::endl;
 // The following code was based on the examples shown at
 // https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
 
-Term::cout << "Enter 'y' to call a Python script that updates \
-single-player stats; enter 'n' to skip this process. (This may \
+Term::cout << "Type 'y' to call a Python script that updates \
+single-player stats; type 'n' to skip this process. (This may \
 require some setup on your part; \
 see Readme for more details. You can also run that script \
 separately if you prefer." << std::endl;
@@ -2596,7 +2608,7 @@ std::string multiplayer_start_time_as_string = multiplayer_start_container;
     << Term::cursor_move(
     1, 1) << "Welcome to Type Through the Bible's multiplayer \
 mode! First, enter the names of all players one by one; make sure \
-to press Enter after each name. (Player names cannot \
+to press Enter after each name. (Player names should not \
 include whitespace.) Once all names have been \
 entered, type 'c' and hit Enter." << std::endl;
 
@@ -2650,14 +2662,14 @@ who will be joining this game:"
     std::string multiplayer_rounds_as_string = "";
     std::string tests_per_round_as_string = "";
 
-    Term::cout << "\nNext, enter an integer that represents \
-how many rounds you would like to play." << std::endl;
+    Term::cout << "\nNext, type an integer that represents \
+how many rounds you would like to play, then hit Enter." << std::endl;
 
     multiplayer_rounds_as_string = cooked_input_within_raw_mode(); 
 
-    Term::cout << "\nAnd now please enter, in integer form, \
+    Term::cout << "\nAnd now please type, in integer form, \
 how many consecutive typing tests each player will \
-perform each round." << std::endl;
+perform each round. Press Enter when finished." << std::endl;
 
     tests_per_round_as_string = cooked_input_within_raw_mode();
         try
@@ -2693,10 +2705,11 @@ With " << player_names.size() << " players, this game will \
 include " << multiplayer_rounds * player_names.size() * 
 tests_per_round << " tests in total." << std::endl;
 
-    Term::cout << "\nNext, enter a tag to incorporate into the \
-filename that will store your game results. (This step is \
-optional.) The tag should be 16 or fewer characters and should \
-not have any spaces." << std::endl;
+    Term::cout << "\nNext, type a tag to incorporate into the \
+filename that will store your game , then hit Enter. \
+(This step is optional; hit Enter to skip it.) The tag should \
+be 16 or fewer characters and should not have \
+any spaces." << std::endl;
 
     std::string multiplayer_filename_string = (
         cooked_input_within_raw_mode());
@@ -2758,11 +2771,13 @@ multiplayer_rounds * tests_per_round) - 1; // Subtracting 1 here
     // will allow a multiplayer round to end on the final verse
     // within the Bible.
 
-    Term::cout << "\n\nFinally, enter the integer corresponding to the \
-verse ID at which you would like to begin the game. This can range \
-from 1 to " << vrv.size() - last_verse_offset << ". (Enter -1 to \
+    Term::cout << "\n\nFinally, type the integer corresponding to \
+the verse ID at which you would like to begin the game, followed \
+by Enter. This can range from 1 to " 
+<< vrv.size() - last_verse_offset << ". (Type -1 to \
 cancel this multiplayer session, and -2 to choose \
-randomly-selected verses.)" << std::endl;
+randomly-selected verses; hit Enter after those options also.)" 
+<< std::endl;
 
     int starting_verse_index_to_type = select_verse_id(vrv,
     multiplayer_rounds * tests_per_round);
@@ -2997,8 +3012,8 @@ mp_pivot_export_end_time - mp_pivot_export_start_time)
 // The following code was based on
 // https://stackoverflow.com/a/4907852/13097194 
 
-Term::cout << "Enter 'y' to call a Python script that will visualize \
-your new multiplayer stats; enter 'n' to skip this process. \
+Term::cout << "Type 'y' to call a Python script that will visualize \
+your new multiplayer stats; type 'n' to skip this process. \
 (This may require some setup on your part; \
 see Readme for more details. You can also run the multiplayer script \
 separately if you prefer." << std::endl;
@@ -3113,7 +3128,7 @@ if (config_update_request == "y")
 
 Term::cout << "Data for " << player_to_import << " will now be \
 added to your main test results files under the name " << 
-new_gcf.player << ". Enter 'y' to proceed or \
+new_gcf.player << ". Press 'y' to proceed or \
 'n' to cancel." << std::endl;
 
 std::string import_confirmation = get_single_keypress({"y", "n"});
@@ -3283,17 +3298,19 @@ void combine_multiplayer_results(std::string py_complement_name)
 // sets of multiplayer results into the same file, then (2)
 // calls another Python script to create visualizations of those
 // results.
-{Term::cout << "Enter the first and last verse IDs (inclusive) of \
-the multiplayer session, separated by an underscore. (Example \
+{Term::cout << "Type the first and last verse IDs (inclusive) of \
+the multiplayer session, separated by an underscore, followed \
+by Enter. (Example \
 input: 30786_30795) Only results within \
 this range of IDs will get incorporated into the \
-results.\n\nAlternatively, enter 'y' to have the game \
-detect these IDs within the first set of results that it \
+results.\n\nAlternatively, type 'y', followed by 'Enter', to \
+have the game detect these IDs within the first set of results \
+that it \
 analyzes." << std::endl;
 
 std::string verse_ids = cooked_input_within_raw_mode(); 
 
-Term::cout << "Enter 'y' to process these results and 'n' to \
+Term::cout << "Type 'y' to process these results and 'n' to \
 cancel." << std::endl;
 
 std::string result_combination_confirmation = (
@@ -3396,12 +3413,12 @@ can't catch user input. Exiting...");
 }
 
 
-Term::cout << "\nEnter 's' or 'm' for single-player or \
+Term::cout << "\nType 's' or 'm' for single-player or \
 multiplayer mode, respectively.\nTo import multiplayer results \
-into your single-player files, enter 'r.'\nTo combine multiplayer \
+into your single-player files, type 'r.'\nTo combine multiplayer \
 results within ..Files/MP_Test_Result_Files_To_Combine into a single \
-file, then analyze them, enter 'c'.\nTo exit the game, \
-press 'e.'" << std::endl;
+file, then analyze them, type 'c'.\nTo exit the game, \
+type 'e.'" << std::endl;
 
         gameplay_option = get_single_keypress({
     "s", "m", "r", "c", "e"});

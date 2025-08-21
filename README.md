@@ -11,6 +11,8 @@ Released under the MIT License
 
 [Note: this Readme is a very early work in progress! More information will be provided soon.]
 
+![](Screenshots/Genesis_1_new_menu.png)
+
 # Introduction
 
 [To be completed soon!]
