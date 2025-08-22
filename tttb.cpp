@@ -2216,10 +2216,10 @@ races is " + std::to_string(last_10_wpm_mean) + ".\n";
             {Term::cout << progress_message << std::endl;
 
             Term::cout << "Choose your desired game mode by typing \
-'n', 'c', 'i', 'N', 'C', 'I', 'm', 's', 'u', or 'e'. Press 'h' for \
-descriptions of these options." << std::endl;
+'n', 'c', 'i', 'r', 'N', 'C', 'I', 'm', 's', 'u', or 'e'. \
+Press 'h' for descriptions of these options." << std::endl;
 
-            user_response = get_single_keypress({"n", "c", "i",
+            user_response = get_single_keypress({"n", "c", "i", "r",
             "m", "s", "u", "e", "N", "C", "I", "h"});
         }
         }
@@ -2241,6 +2241,8 @@ descriptions of these options." << std::endl;
 'n'\tType the next untyped verse, then return to the gameplay menu.\n\
 'c'\tType the next verse, then return to the gameplay menu.\n\
 'i'\tType a specific verse ID, then return to the gameplay menu.\n\
+'r'\tRepeat the verse you just typed, then return to the \
+gameplay menu.\n\
 'N'\tAutomatically get directed to the next untyped verse.\n\
 'C'\tAutomatically get directed to the next verse.\n\
 'I'\tSelect a verse from which to begin, then \
@@ -2326,10 +2328,20 @@ mode, by pressing Ctrl+C." << std::endl;
             {user_response = "C";}
         }
 
+        else if (user_response == "r")
+        {
+            if (within_session_test_number == 0)
+        {Term::cout << "No verses have been typed yet, so this \
+option isn't valid.\n" << std::endl;}
+        else
+        {verse_index_to_type = previously_typed_verse_index;}
+        }
+
+
         else if (user_response == "e")
         {
-            Term::cout << "Exiting game and saving progress." << std::endl;
-            // break;
+            Term::cout << "Exiting game and saving progress." 
+<< std::endl;
         }
 
         else if ((user_response == "s") || (user_response == "c")
@@ -2340,9 +2352,9 @@ mode, by pressing Ctrl+C." << std::endl;
             // was the last verse in the Bible; therefore, this option
             // won't be valid.
             {
-                Term::cout << "You just typed the last verse in the Bible. \
-therefore, you'll need to select another option, such as 'i', \
-which will allow you to type a specific verse."
+                Term::cout << "You just typed the last verse in \
+the Bible. therefore, you'll need to select another option, \
+such as 'i', which will allow you to type a specific verse."
                            << std::endl;
                 marathon_mode = false; // Exiting marathon mode in order to prevent
                 // an infinite dialog loop from occuring
