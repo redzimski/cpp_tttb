@@ -428,8 +428,8 @@ x = 'Player test number', y = 'WPM',
        title = 'WPM By Player and Test',
         color_discrete_sequence = px.colors.qualitative.Alphabet)
     fig_wpm_by_player.write_html(
-    f'{mp_visualizations_folder}{test_results_name}_Mean_WPM_By_\
-Player_And_Test.html',
+    f'{mp_visualizations_folder}{test_results_name}_mean_WPM_by_\
+player_and_test.html',
     include_plotlyjs = 'cdn')
     # Note: 'Alphabet' is used here so that up to 26 distinct colors can be
     # shown within the chart (which will prove useful for multiplayer rounds
@@ -485,8 +485,8 @@ if category == 'mpv':
         title = 'Mean WPM by Player and Round',
           text_auto = '.0f', hover_data = 'Overall rank')
     fig_mean_wpm_by_player_and_round.write_html(
-        f'{mp_visualizations_folder}{test_results_name}_Mean_WPM_\
-By_Player_And_Round.html',
+        f'{mp_visualizations_folder}{test_results_name}_mean_WPM_\
+by_player_and_round.html',
         include_plotlyjs = 'cdn')
     # fig_mean_wpm_by_player_and_round
 
@@ -765,7 +765,7 @@ if category == 'spv':
                      'Verse_ID', 'Verse_Code'],
        text_auto = '.3f', title = '100 Fastest Tests')
     fig_fastest_tests.write_html(
-        f'{sp_visualizations_folder}Fastest_Tests.html',
+        f'{sp_visualizations_folder}fastest_tests.html',
         include_plotlyjs = 'cdn')
 
 
@@ -830,8 +830,8 @@ if category == 'spv':
                                  title = f'Mean WPM by {tag} value',
                                 text_auto = '.3f',
                                    hover_data = 'Tests')
-            fig_wpm_by_tag.write_html(f'{sp_visualizations_folder}Mean_\
-WPM_by_{tag}.html', include_plotlyjs = 'cdn')
+            fig_wpm_by_tag.write_html(f'{sp_visualizations_folder}mean_\
+WPM_by_{tag.lower()}.html', include_plotlyjs = 'cdn')
 
 
 # ### Creating endurance-related charts:
@@ -887,8 +887,8 @@ if category == 'spv':
         hover_data = 'Rank')
         
         fig_endurance.write_html(
-        f'{sp_visualizations_folder}Endurance_Top_50_\
-Clock_'+time_category.replace(' ', '_')+'.html', 
+        f'{sp_visualizations_folder}endurance_top_50_\
+clock_'+time_category.replace(' ', '_').lower()+'.html', 
         include_plotlyjs = 'cdn')
 
 
@@ -914,7 +914,7 @@ if category == 'spv':
     xaxis_title = None,
     title = 'Characters Typed by Starting Year and Month')
     fig_yyyy_mm_characters.write_html(
-    f'{sp_visualizations_folder}Characters_\
+    f'{sp_visualizations_folder}characters_\
 typed_by_year_and_month.html', include_plotlyjs = 'cdn')
 
 
@@ -930,7 +930,7 @@ if category == 'spv':
     xaxis_title = None,
     title = 'Months by characters typed')
     fig_yyyy_mm_most_characters.write_html(
-    f'{sp_visualizations_folder}Most_characters_\
+    f'{sp_visualizations_folder}most_characters_\
 typed_by_year_and_month.html', include_plotlyjs = 'cdn')
 
 
@@ -944,7 +944,7 @@ if category == 'spv':
     fig_yyyy_mm_wpm.update_layout(xaxis_type = 'category',
     xaxis_title = None,
     title = 'Mean WPM by Starting Year and Month')
-    fig_yyyy_mm_wpm.write_html(f'{sp_visualizations_folder}avg_wpm_by_\
+    fig_yyyy_mm_wpm.write_html(f'{sp_visualizations_folder}avg_WPM_by_\
 year_and_month.html', include_plotlyjs = 'cdn')
 
 
@@ -967,8 +967,8 @@ if category == 'spv':
                                     text_auto = ',.0f',
                                   title = 'Characters typed by date',
                                    hover_data = ['Rank'])
-    fig_keypresses_by_date.write_html(f'{sp_visualizations_folder}Keypresses\
-_Typed_by_Date.html', include_plotlyjs='cdn')
+    fig_keypresses_by_date.write_html(f'{sp_visualizations_folder}keypresses\
+_typed_by_date.html', include_plotlyjs='cdn')
 
 
 # In[40]:
@@ -983,7 +983,7 @@ if category == 'spv':
            hover_data = ['Rank']).update_layout(
         xaxis_type = 'category')
     fig_top_dates_by_keypresses.write_html(
-        f'{sp_visualizations_folder}Top_Dates_by_Keypresses.html', 
+        f'{sp_visualizations_folder}top_dates_by_keypresses.html', 
         include_plotlyjs='cdn')
 
 
@@ -1014,8 +1014,8 @@ if category == 'spv':
         hover_data = 'Number of tests').update_layout(
         xaxis_title = 'Within-session test number')
     fig_mean_wpm_by_within_session_test_number.write_html(
-        f'{sp_visualizations_folder}Mean_WPM_by_Within_\
-Session_Test_Number.html', 
+        f'{sp_visualizations_folder}mean_WPM_by_within_\
+session_test_number.html', 
         include_plotlyjs='cdn')
     #fig_mean_wpm_by_within_session_test_number
 
@@ -1033,8 +1033,8 @@ Within-Session Test Number").update_traces(
         mode = 'markers+lines').update_layout(showlegend = False,
         xaxis_title = 'Within-session test number')
     fig_wpm_by_session_num_comparison.write_html(
-        f'{sp_visualizations_folder}WPM_by_Within_Session_\
-Test_Number.html', 
+        f'{sp_visualizations_folder}WPM_by_within_session_\
+test_number.html', 
         include_plotlyjs='cdn')
     # fig_wpm_by_session_num_comparison
 
@@ -1089,7 +1089,7 @@ Rate Bin').update_layout(
         yaxis_title = '10-race rolling WPM')
     
     fig_rolling_wpm_by_error_rate.write_html(
-    f'{sp_visualizations_folder}Mean_Rolling_WPM_\
+    f'{sp_visualizations_folder}mean_rolling_WPM_\
 by_accuracy_bin.html', include_plotlyjs = 'cdn')
 
 
@@ -1110,7 +1110,7 @@ if category == 'spv':
            text_auto = '.2f',
     title = 'Mean WPM by Accuracy Bin')
     fig_mean_wpm_by_error_rate.write_html(
-    f'{sp_visualizations_folder}Mean_WPM_by_accuracy_bin.html', 
+    f'{sp_visualizations_folder}mean_WPM_by_accuracy_bin.html', 
     include_plotlyjs = 'cdn')
 
 
@@ -1263,11 +1263,16 @@ if category == 'spv':
 if category == 'spv':
     df_progress = df_Bible.pivot_table(
     index = ['Book_Num', 'Book'], values = [
-    'Typed Characters', 'Total Characters'], aggfunc = 'sum').reset_index()
+    'Typed Characters', 'Total Characters'], aggfunc = 'sum',
+    margins=True, margins_name='Overall').reset_index()
     df_progress['% Typed'] = 100*(df_progress['Typed Characters'] 
                                   / df_progress['Total Characters'])
-    df_progress
+    # Updating the Book_Num and Book values for the 'Overall' row:
+    df_progress.at[len(df_progress)-1, 'Book_Num'] = len(df_progress)
+    df_progress.at[len(df_progress)-1, 'Book'] = 'Overall'
 
+
+# Graphing progress in percentage terms:
 
 # In[59]:
 
@@ -1275,21 +1280,30 @@ if category == 'spv':
 if category == 'spv':
     fig_pct_progress = px.bar(df_progress, x = 'Book', y = '% Typed',
     title = 'Books of the Bible by % of Characters Typed', text_auto = '.1f',
-    color = '% Typed')
+    color = '% Typed', hover_data = [
+    'Total Characters', 'Typed Characters'])
     fig_pct_progress.write_html(
-    f'{sp_visualizations_folder}Progress_percentage.html', 
+    f'{sp_visualizations_folder}progress_percentage.html', 
     include_plotlyjs = 'cdn')
 
+
+# Graphing progress in nominal (character-based) terms:
+# 
+# (This chart, unlike the previous one, doesn't include the 'Overall' row, as its presence would make all of the other bars appear very small in comparison.)
 
 # In[60]:
 
 
 if category == 'spv':
-    fig_progress = px.bar(df_progress, x = 'Book', y = ['Total Characters', 'Typed Characters'],
-    title = 'Books of the Bible by Total Characters and Characters Typed', text_auto = '.0f', barmode = 'overlay',
+    fig_progress = px.bar(df_progress.query("Book != 'Overall'"), 
+    x = 'Book', y = [
+        'Total Characters', 'Typed Characters'],
+    title = 'Books of the Bible by Total Characters and \
+Characters Typed', text_auto = '.0f', barmode = 'overlay',
+    hover_data = '% Typed',
     opacity = 1).update_layout(legend_title = 'Metric')
     fig_progress.write_html(
-    f'{sp_visualizations_folder}Progress_nominal.html', 
+    f'{sp_visualizations_folder}progress_nominal.html', 
     include_plotlyjs = 'cdn')
 
 
