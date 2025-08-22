@@ -44,37 +44,37 @@ Here's what my default settings look like: (I use Tag_1 to store the keyboard I'
 
 Here is how TTTB's folders and files are organized:
 
-    cpp_tttb/ [the root folder for the game; your exact name may differ]
-    
-    ----build/
-    
-    --------_internal/ [contains Pyinstaller-related files; these are crucial to include in order for the corresponding Python executable to work correctly, but you shouldn't need to modify them]
-    
-    --------tttb [tttb.exe on Windows; the main TTTB executable that you'll launch in order to start the game]
-    
-    --------tttb_py_complement [tttb_py_complement on Windows; the Python executable that TTTB uses to (1) create single-player and multiplayer visualizations and (2) combine various multiplayer files into single files. This executable can be called either within TTTB or as a standalone executable]
-    
-    ----files/
-    
-    --------MP_Test_Result_Files_To_Combine/
+cpp_tttb/ [the root folder for the game; your exact name may differ]
 
-    --------MP_Word_Result_Files_To_Combine/ [currently unused]
-    
-    --------Multiplayer/ [multiplayer results will be stored here.]
-    
-    --------CPDB_for_TTTB.csv [A local copy of the Catholic Public Domain Bible. Your overall progress in typing through the entire Bible will get stored within this file.]
-    
-    --------game_config.csv [This file stores default configuration options, such as your name and various gameplay tags.]
-    
-    --------test_results.csv [This file provides detailed data on all of your test results, including WPM and accuracy data; start and end times; and verse-related information.]
-    
-    --------word_results.csv [This file provides word-level WPM and accuracy data.]
-    
-    ----Visualizations/
-    
-    --------Multiplayer/ [Multiplayer visualizations will get stored here.]
-    
-    --------Single_Player/ [Single-player visualizations will get stored here.]
+**----build/**
+
+--------_internal/ [contains Pyinstaller-related files; these are crucial to include in order for the corresponding Python executable to work correctly, but you shouldn't need to modify them]
+
+--------tttb [tttb.exe on Windows; the main TTTB executable that you'll launch in order to start the game]
+
+--------tttb_py_complement [tttb_py_complement on Windows; the Python executable that TTTB uses to (1) create single-player and multiplayer visualizations and (2) combine various multiplayer files into single files. This executable can be called either within TTTB or as a standalone executable]
+
+**----Files/**
+
+--------MP_Test_Result_Files_To_Combine/
+
+--------MP_Word_Result_Files_To_Combine/
+
+--------Multiplayer/ [multiplayer results will be stored here.]
+
+--------CPDB_for_TTTB.csv [A local copy of the Catholic Public Domain Bible. Your overall progress in typing through the entire Bible will get stored within this file.]
+
+--------game_config.csv [This file stores default configuration options, such as your name and various gameplay tags.]
+
+--------test_results.csv [This file provides detailed data on all of your test results, including WPM and accuracy data; start and end times; and verse-related information.]
+
+--------word_results.csv [This file provides word-level WPM and accuracy data.]
+
+**----Visualizations/**
+
+--------Multiplayer/ [Multiplayer visualizations will get stored here.]
+
+--------Single_Player/ [Single-player visualizations will get stored here.]
 
 
 ## Gameplay instructions
