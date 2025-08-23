@@ -13,7 +13,7 @@ perform these tasks in C++ (or in a C++ library) rather than
 simply learn how to get an AI tool to create them.
 
 This code also makes extensive use of the following
-open-source libraries:
+open-source libraries: 
 
 1. Vincent La's CSV parser (https://github.com/vincentlaucsb/csv-parser)
 2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)
@@ -99,7 +99,7 @@ std::vector<std::string> background_color_codes {
 /*Black*/ "40", /*White*/ "47"};
 
 // Specifying prefixes and suffixes that will precede and proceed
-// these background color codes, respectitvely:
+// these background color codes, respectively:
 std::string background_color_prefix = "\033[37;"; // 
 // The ANSI escape code for white foreground text. 
 std::string background_color_suffix = "m    \033[0m"; 
@@ -129,7 +129,7 @@ std::string incorrect_output_color_code = Term::color_fg(
     Term::Color::Name::Magenta); // Switched from Red to Magenta
 // to make the game more accessible to colorblind players.
 // (Special thanks to David Nichols for his excellent
-// coloblindness reference at
+// colorblindness reference at
 // https://davidmathlogic.com/colorblind -- and for suggesting
 // magenta as an alternative to green.)
 std::string default_output_color_code = Term::color_fg(
@@ -184,7 +184,7 @@ struct Test_Result_Row
     std::string verse_code;
     std::string verse; // In rare occasions, corrections might be
     // made to a given verse. (For instance, I replaced double
-    // spaces in the original CDBP text with single spaces.)
+    // spaces in the original CPDB text with single spaces.)
     // Therefore, it will be helpful to keep a record of the verse
     // that the user actually typed, even though this will make
     // the test results file considerably larger.
@@ -206,7 +206,7 @@ struct Test_Result_Row
     // can use to store custom information (e.g. about
     // what keyboard is being used, how much sleep he/she got
     // the night before, etc.)
-    // These will be initialized as emtpy strings because, as
+    // These will be initialized as empty strings because, as
     // optional fields, there may not be any data entered for
     // them during the typing test.
     std::string player = "";
@@ -307,7 +307,7 @@ prompt, thus making multi-line input easier to handle.*/
 
     // Clearing the console and displaying the prompt:
     // (Note that, unlike within run_test(), clear() isn't
-    // called here, as the usuer might want to be able to scroll
+    // called here, as the user might want to be able to scroll
     // up to see previous input.
     Term::cout << Term::clear_screen()  
         << Term::cursor_move(
@@ -733,7 +733,7 @@ of that test.
     // operation will be dropped by default. Subtracting 1 from
     // the length of the verse will prevent an extra row from
     // getting added if the length of the verse is an exact multiple
-    // of the width of the terimnal.)
+    // of the width of the terminal.)
 
     int starting_result_row = (verse_row.characters - 1) / (
         term_size.columns()) + 2;
@@ -804,7 +804,7 @@ the space bar to begin the typing test and 'e' to cancel it."
     // Also note that functions like 'cursor_move()' also make 
     // use of escape codes; see 
     // https://jupyter-xeus.github.io/cpp-terminal/cursor_8cpp_source.html
-    // for examples of the original codes underlying thsi and 
+    // for examples of the original codes underlying this and 
     // related functions. 
     Term::cout << cursor_reposition_code << "\033[J" << std::endl;
 
@@ -846,7 +846,7 @@ the space bar to begin the typing test and 'e' to cancel it."
         // this function, so we don't
         // need to re-initialize them as 0 here.
         // word_timing_note = "the first letter within the verse \
-// began a word. its corresponing ending character index \
+// began a word. its corresponding ending character index \
 // is: "+last_character_index_as_string;
     }
 
@@ -909,7 +909,7 @@ the space bar to begin the typing test and 'e' to cancel it."
             // executable version of the keys.cpp example within
             // the cpp-terminal library (available at
             // https://github.com/jupyter-xeus/cpp-terminal/blob/master/examples/keys.cpp ).
-            // Note that Alt+Del is generated in Liunx by pressing 
+            // Note that Alt+Del is generated in Linux by pressing 
             // Alt+Backspace (at least when using Linux Mint on my 
             // Gigabyte Aorus laptop); Del is generated in OSX
             // by pressing Function + Delete; and Alt+Backspace
@@ -1001,7 +1001,7 @@ the space bar to begin the typing test and 'e' to cancel it."
                     last_character_index_as_string = std::to_string(
                         last_character_index);
                     // word_timing_note = "the next letter will start a word. \
-// its corresponing ending character index \
+// its corresponding ending character index \
 // is: "+last_character_index_as_string;
                 }
                 if (user_string.length() - 1 == last_character_index)
@@ -1109,7 +1109,7 @@ word_map[latest_first_character_index].error_and_backspace_rate =
 
             // The following line shows the latest keypress 
             // processing time value directly below the player's
-            // response. This data will also be availble for
+            // response. This data will also be available for
             // view within a local .csv file (as long as that code
             // hasn't since been commented out).
             // Term::cout << processing_microseconds << std::endl;
@@ -1182,7 +1182,7 @@ word_map[latest_first_character_index].error_and_backspace_rate =
     // Here's an example of what local_time_string might
     // look like:
     // 2025-06-12T21:49:33-0400
-    // (This string is 24 chararcters long. I found that
+    // (This string is 24 characters long. I found that
     // I needed to set strftime_container as one greater
     // than this length in order for it to fit the entire
     // timestamp.
@@ -1512,7 +1512,7 @@ std::vector<Verse_Row> import_verses(
     // unique pointers to Verse_Row objects; however, based on
     // some online research, I don't think this approach would
     // necessarily speed up my program--and, in fact, all of the
-    // deferencing operations could end up slowing it down. Therefore,
+    // dereferencing operations could end up slowing it down. Therefore,
     // I instead decided to have vrv store full copies of this data;
     // however, my typing test function accesses values stored in this
     // vector by reference, which should reduce the amount of
@@ -1904,8 +1904,8 @@ void export_verses(const std::vector<Verse_Row> &vrv,
     // of strings:
     // See
     // https://stackoverflow.com/a/23855901/13097194
-    // (which actualy recommends a potentially better solution
-    // outside of the stanard library) for to_string().
+    // (which actually recommends a potentially better solution
+    // outside of the standard library) for to_string().
     for (int i = 0; i < vrv.size(); ++i)
     {
         std::vector<std::string> cols_as_strings = {
@@ -2279,7 +2279,7 @@ mode, by pressing Ctrl+C." << std::endl;
             {
                 Term::cout << all_verses_typed_message << std::endl; 
                 marathon_mode = false;
-                // Since verse_index_to_type is stil at -1, the user
+                // Since verse_index_to_type is still at -1, the user
                 // will now be returned to the main gameplay prompt.
                 // (It may not actually be necessary to set 
                 // marathon_mode to false here, but it likely 
@@ -2363,7 +2363,7 @@ the Bible. therefore, you'll need to select another option, \
 such as 'i', which will allow you to type a specific verse."
                            << std::endl;
                 marathon_mode = false; // Exiting marathon mode in order to prevent
-                // an infinite dialog loop from occuring
+                // an infinite dialog loop from occurring
                 show_update_within_run_test = false;
             }
             else
@@ -2759,7 +2759,7 @@ any spaces." << std::endl;
 
     
 // Initializing filenames for test results, word results, and 
-// a pivot table that will store players' avearge WPMs;
+// a pivot table that will store players' average WPMs;
 
     std::string multiplayer_test_results_path = (
 "../Files/Multiplayer/" + multiplayer_start_time_as_string + "_" +
@@ -2801,7 +2801,7 @@ randomly-selected verses; hit Enter after those options also.)"
     multiplayer_rounds * tests_per_round);
 
     if (starting_verse_index_to_type == -1)
-    {Term::cout << "\nCancelling multiplayer game." << std::endl;
+    {Term::cout << "\nCanceling multiplayer game." << std::endl;
     return;}
 
     std::vector<int> random_verse_ids {};
@@ -2827,7 +2827,7 @@ randomly-selected verses; hit Enter after those options also.)"
 
 
     // The following struct will facilitate the process of adding
-    // relevant information (incuding player names) to our test
+    // relevant information (including player names) to our test
     // results file.
 
     Game_Config mgcf;
