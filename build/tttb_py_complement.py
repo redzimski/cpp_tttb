@@ -530,7 +530,7 @@ if category == 'mpv':
     px.colors.qualitative.Alphabet)
     fig_highest_wpm.write_html(
         f'{mp_visualizations_folder}{test_results_name}_\
-highest_wpm_by_player.html', include_plotlyjs = 'cdn')
+highest_WPM_by_player.html', include_plotlyjs = 'cdn')
     # fig_highest_wpm
 
 
@@ -568,6 +568,7 @@ if category == 'spv':
     df_tr = df_tr.sort_values(
         'Local_Test_Start_Time').reset_index(drop=True).copy()
     df_tr['Chronological test number'] = df_tr.index+1
+    df_tr['Count'] = 1
 
 
 # Adding chronological session numbers to DataFrame:
@@ -724,22 +725,34 @@ if category == 'spv':
             
 
 
+# ### WPM results by test:
+# 
+# Calculating rolling and cumulative means:
+
 # In[25]:
 
 
-# df_tr
+if category == 'spv': 
+    print("Analyzing WPM data.")
+    for period in [10, 50, 100, 1000]:
+        #print(period)
+        df_tr[f'Rolling {period}-test mean WPM'] = df_tr[
+    'WPM'].rolling(window=period).mean()
+    df_tr['Cumulative mean WPM'] = df_tr['WPM'].cumsum(
+    ) / df_tr['Count'].cumsum()
 
-
-# ### WPM results by test:
 
 # In[26]:
 
 
 if category == 'spv': 
-    print("Analyzing WPM data.")
     fig_wpm_by_test = px.line(
-        df_tr, x = 'Chronological test number', y = 'WPM',
-    title = 'WPM by Chronological Test Number',)
+        df_tr, x = 'Chronological test number', y = ['WPM', 
+'Rolling 10-test mean WPM', 'Rolling 50-test mean WPM', 
+'Rolling 100-test mean WPM', 'Rolling 1000-test mean WPM', 
+'Cumulative mean WPM'],
+    title = 'WPM by Chronological Test Number').update_layout(
+legend_title = 'Metric')
     fig_wpm_by_test.write_html(
         f'{sp_visualizations_folder}WPM_by_race.html',
         include_plotlyjs = 'cdn')
@@ -806,7 +819,7 @@ if category == 'spv':
 total number of characters typed that hour)',
     color = 'Characters')
     fig_wpm_by_hour.write_html(
-    f'{sp_visualizations_folder}wpm_by_hour.html',
+    f'{sp_visualizations_folder}WPM_by_hour.html',
     include_plotlyjs = 'cdn')
     fig_wpm_by_hour
 
@@ -987,7 +1000,7 @@ if category == 'spv':
         include_plotlyjs='cdn')
 
 
-# ### Calculating mean WPM by test number:
+# ### Calculating mean WPM by within-session test numbers:
 
 # In[41]:
 
@@ -1030,7 +1043,7 @@ if category == 'spv':
            color = 'Session_Number', 
             title = "WPM by Session Number and \
 Within-Session Test Number").update_traces(
-        mode = 'markers+lines').update_layout(showlegend = False,
+        mode = 'markers+lines').update_layout(showlegend = True,
         xaxis_title = 'Within-session test number')
     fig_wpm_by_session_num_comparison.write_html(
         f'{sp_visualizations_folder}WPM_by_within_session_\
@@ -1075,18 +1088,18 @@ if category == 'spv':
 
 
 if category == 'spv':
-    df_tr['10-race rolling WPM for error/backspace \
+    df_tr['10-test rolling WPM for error/backspace \
 rate bin'] = df_tr.groupby(
     'Error/backspace rate bin')['WPM'].transform(
     lambda wpm_within_error_bin: wpm_within_error_bin.rolling(10).mean())
     df_tr
 
     fig_rolling_wpm_by_error_rate = px.line(df_tr, x = 'Chronological test number',
-            y = '10-race rolling WPM for error/backspace rate bin', 
+            y = '10-test rolling WPM for error/backspace rate bin', 
     color = 'Error/backspace rate bin',
-           title = 'Rolling 10-Race WPM by Error + Backspace \
+           title = 'Rolling 10-test WPM by Error + Backspace \
 Rate Bin').update_layout(
-        yaxis_title = '10-race rolling WPM')
+        yaxis_title = '10-test rolling WPM')
     
     fig_rolling_wpm_by_error_rate.write_html(
     f'{sp_visualizations_folder}mean_rolling_WPM_\
@@ -1154,7 +1167,7 @@ if category == 'spv':
           title = 'Highest word-level mean WPM for words \
 typed at least 10 times')
     fig_highest_word_level_wpm.write_html(
-    f'{sp_visualizations_folder}words_with_highest_wpm.html', 
+    f'{sp_visualizations_folder}words_with_highest_WPM.html', 
     include_plotlyjs = 'cdn')
 
 
@@ -1168,7 +1181,7 @@ if category == 'spv':
           title = 'Lowest word-level mean WPM for words typed at least 10 \
 times')
     fig_lowest_word_level_wpm.write_html(
-    f'{sp_visualizations_folder}words_with_lowest_wpm.html', 
+    f'{sp_visualizations_folder}words_with_lowest_WPM.html', 
     include_plotlyjs = 'cdn')
 
 
@@ -1182,7 +1195,8 @@ if category == 'spv':
 
     df_wr_acc_wpm = df_wr.pivot_table(
     index = 'Word', values = ['Count', 'Typed Correctly', 'WPM'], 
-    aggfunc = {'Count':'sum', 'Typed Correctly':'mean', 'WPM':'mean'}).query(
+    aggfunc = {'Count':'sum', 'Typed Correctly':'mean',
+'WPM':'mean'}).query(
     "Word not in @words_to_remove").reset_index()
     df_wr_acc_wpm['Error-free %'] = df_wr_acc_wpm['Typed Correctly'] * 100
 
@@ -1226,7 +1240,7 @@ if category == 'spv':
               hover_data = ['Word', 'Count'], color = 'Count',
               title = 'WPM by Error-free % for Words Typed at Least 10 Times')
     fig_wr_acc_wpm.write_html(
-    f'{sp_visualizations_folder}word_accuracy_wpm_scatter.html', 
+    f'{sp_visualizations_folder}word_accuracy_WPM_scatter.html', 
     include_plotlyjs = 'cdn')
 
 

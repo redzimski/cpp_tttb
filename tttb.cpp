@@ -1,5 +1,4 @@
 /* C++ Version of Type Through the Bible
-(Still a work in progress!)
 
 By Kenneth Burchfiel
 Released under the MIT License
@@ -121,11 +120,18 @@ autosaved_CPDB_for_TTTB.csv";
 // Defining colors that represent correct and incorrect output:
 // (This code is based on the Hello World example for 
 // cpp-terminal at https://github.com/jupyter-xeus/cpp-terminal .)
+// A full list of color names can be found at 
+// https://jupyter-xeus.github.io/cpp-terminal/cpp-terminal_Manual.pdf .
 
 std::string correct_output_color_code = Term::color_fg(
     Term::Color::Name::Green);
 std::string incorrect_output_color_code = Term::color_fg(
-    Term::Color::Name::Red);
+    Term::Color::Name::Magenta); // Switched from Red to Magenta
+// to make the game more accessible to colorblind players.
+// (Special thanks to David Nichols for his excellent
+// coloblindness reference at
+// https://davidmathlogic.com/colorblind -- and for suggesting
+// magenta as an alternative to green.)
 std::string default_output_color_code = Term::color_fg(
     Term::Color::Name::Default);
 std::string print_color_code = default_output_color_code; // This
@@ -2474,7 +2480,7 @@ from which to start this mode." << std::endl;
 // The following code was based on the examples shown at
 // https://www.geeksforgeeks.org/cpp/system-call-in-c/ .
 
-Term::cout << "Type 'y' to call a Python script that updates \
+Term::cout << "\nPress 'y' to call a Python script that updates \
 single-player stats; type 'n' to skip this process. (This may \
 require some setup on your part; \
 see Readme for more details. You can also run that script \
@@ -3322,7 +3328,7 @@ analyzes." << std::endl;
 
 std::string verse_ids = cooked_input_within_raw_mode(); 
 
-Term::cout << "Type 'y' to process these results and 'n' to \
+Term::cout << "\nType 'y' to process these results and 'n' to \
 cancel." << std::endl;
 
 std::string result_combination_confirmation = (
