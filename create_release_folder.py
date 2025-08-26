@@ -75,7 +75,7 @@ if notebook_exec == False:
     args = parser.parse_args()
     files_to_compile = args.files_to_compile
 else:
-    files_to_compile = 'both'
+    files_to_compile = 'neither'
 
 # Determining, based on the argument passed to files_to_compile,
 # which source code files to compile:
@@ -142,9 +142,24 @@ if compile_cpp == True:
     compile_cpp_output_2 = subprocess.run("cmake --build .", shell=True,
                             capture_output = True, check=True)
     print(compile_cpp_output_2)
+    # Linux and Mac place the executable directly within the build folder;
+    # meanwhile, Windows (at least with the compiler I'm using) places it
+    # within a 'Debug' subfolder. Therefore, I added in the following
+    # line to move this file from the 'Debug' folder to the current
+    # working directory.
+    if current_os == 'windows':
+        shutil.copy('Debug/tttb.exe', 'tttb.exe')
 else:
     print("Skipping the compilation process for tttb.cpp.")
 
+
+# Running pyinstaller: 
+# 
+# NOTE: if you have trouble getting this code to run, make sure that you have pyinstaller added as a library within (1) the Python environment you're using to run this code and/or your base environment.
+# 
+# I also found that, at least within Windows, the following code took quite a while to run. I was able to get pyinstaller to build the library within my base environment in around 5-6 minutes, but after 17 minutes, this cell still hadn't finished. Therefore, you might want to take care of the following steps yourself, then select 'cpp' or 'neither' as your argument for this code rather than 'both' or 'py.'
+# 
+# (The code didn't take very long at all to execute within Linux, on the other hand.)
 
 # In[12]:
 
@@ -155,12 +170,13 @@ if compile_py == True:
     # material within the output folder to get deleted and replaced.
     compile_py_output = subprocess.run(
         "pyinstaller tttb_py_complement.py -y", shell = True, 
-        capture_output = True)
+        capture_output = True, check = True)
     print(compile_py_output)
     # Copying tttb_py_complement binary and its corresponding
     # _internal folder into the build folder (where the C++ program expects
     # to find it):
-    shutil.rmtree('_internal')
+    if '_internal' in os.listdir():
+        shutil.rmtree('_internal')
     # Based on datainsight's StackOverflow
         # answer at https://stackoverflow.com/a/70075600/13097194 
     shutil.copytree(
@@ -278,7 +294,7 @@ shutil.copytree('build/_internal', release_folder+'build/_internal')
 #             release_folder+'README.pdf')
 
 
-# In[22]:
+# In[21]:
 
 
 print(f"Finished running the create_release_folder script. A \
