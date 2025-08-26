@@ -25,10 +25,12 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 # You'll also need to download (and likely compile) these libraries before incorporating them into your project.
 
 # The if() and endif() calls were based on mlvljr's response at
-# https://stackoverflow.com/a/32259072/13097194
+# https://stackoverflow.com/a/32259072/13097194,
+# the community wiki answer at
+# https://stackoverflow.com/a/32259072 ,
 # and the CMake documentation at https://gitlab.kitware.com/cmake/community/-/wikis/doc/tutorials/How-To-Write-Platform-Checks .
 
-if(UNIX)
+if(UNIX AND NOT APPLE)
 add_subdirectory(/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/csv-parser /home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/csv-parser_subdiroutput)
 add_subdirectory(/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/cpp-terminal /home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/third_party_libraries/cpp-terminal_subdiroutput)
 # Note RE subdirectory output: https://stackoverflow.com/a/35260629/13097194
@@ -40,7 +42,8 @@ add_subdirectory(C:/Users/kburc/WnD1/3rd_party_libraries/cpp-terminal C:/Users/k
 endif()
 
 IF(APPLE)
-# Will add paths
+add_subdirectory(/Users/alexandraburchfiel/Downloads/csv-parser-master /Users/alexandraburchfiel/Downloads/csv-parser-master_subdiroutput)
+add_subdirectory(/Users/alexandraburchfiel/Downloads/cpp-terminal /Users/alexandraburchfiel/Downloads/cpp-terminal_subdiroutput)
 endif()
 
 
