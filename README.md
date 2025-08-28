@@ -9,7 +9,7 @@ Released under the MIT License
 
 [Link to game download page on Itch.io](https://kburchfiel.itch.io/tttb-cpp) (password: `microseconds`)
 
-[Note: this Readme is an early work in progress, and many sections are still incomplete. More information will be provided soon!]
+[Note: this Readme is still a work in progress, and many sections are still incomplete. More information will be provided soon!]
 
 ![](Screenshots/Genesis_1_new_menu.png)
 
@@ -19,15 +19,17 @@ Type Through the Bible (TTTB) allows you to practice your keyboarding skills by 
 
 ## Download instructions
 
-Linux, Windows, and OSX copies of TTTB are available [at this page](https://kburchfiel.itch.io/tttb-cpp) on itch.io . Until the documentation for the game is more complete, the page will be password-protected; you can access it by entering the password `microseconds`. 
+Linux, Windows, and Apple-Silicon OSX binaries of TTTB are available [at this page](https://kburchfiel.itch.io/tttb-cpp) on itch.io . Until the documentation for the game is more complete, the page will be password-protected; you can access it by entering the password `microseconds`. 
 
 The game is free to download, but donations (while not expected) are greatly appreciated.
 
 Make sure to download both the zipped folder for your operating system *and* the corresponding README (e.g. the file you're reading right now). Once you've unzipped the folder on your local computer, you can move it to a location of your choice--or simply keep it within the downloads folder. Nothing needs to be installed in order for you to begin playing the game.
 
-(If multiple people will be playing TTTB' single-player mode on your computer, I recommend creating a separate copy of the game for each of them. This will make it much easier for each player to keep track of his or her progress.)
+(If multiple people will be playing TTTB's single-player mode on your computer, I recommend creating a separate copy of the game for each of them. This will make it much easier for each player to keep track of his or her progress.)
 
 Because TTTB is released under the MIT license, you are free to modify its underlying C++ and Python code, then share your revisions with others (even under a proprietary license). In this case, you'll want to download and compile the source code rather than use these underlying binaries. See 'Compilation instructions' below for more details.
+
+**Mac/OSX users: Make sure to carefully review 'Starting the game' section below for important details on successfully launching TTTB.**
 
 ### Updating your default configuration settings
 
@@ -46,11 +48,11 @@ cpp_tttb/ [the root folder for the game; your exact name may differ]
 
 **----build/**
 
---------_internal/ [contains Pyinstaller-related files; these are crucial to include in order for the corresponding Python executable to work correctly, but you shouldn't need to modify them]
+--------_internal/ [contains Pyinstaller-related files; these are crucial to include in order for the corresponding Python executable to work correctly, but you shouldn't need to modify them. This folder isn't part of the OSX release, as its contents are compressed within the tttb_py_complement executable.]
 
 --------tttb [tttb.exe on Windows; the main TTTB executable that you'll launch in order to start the game]
 
---------tttb_py_complement [tttb_py_complement on Windows; the Python executable that TTTB uses to (1) create single-player and multiplayer visualizations and (2) combine various multiplayer files into single files. This executable can be called either within TTTB or as a standalone executable]
+--------tttb_py_complement [tttb_py_complement on Windows; the Python executable that TTTB uses to (1) create single-player and multiplayer visualizations and (2) combine various multiplayer files into single files. This executable can be called either within TTTB or as a standalone executable.]
 
 **----Files/**
 
@@ -79,10 +81,12 @@ cpp_tttb/ [the root folder for the game; your exact name may differ]
 
 ### Starting the game
 
-To launch TTTB, you'll first want to open up your command prompt or terminal, then navigate to the program's build folder (where the game's 'tttb'/'tttb.exe' executable file is located). On my Linux computer, I can accomplish this via the following steps:
+To launch TTTB, you'll first want to open up your command prompt or terminal, then navigate to the program's **build** folder (where the game's 'tttb'/'tttb.exe' executable file is located). On my Linux computer, I can accomplish this via the following steps:
 
 1. Press Ctrl + Alt + T to launch my terminal
-2. Enter `cd '/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/cpp_tttb/build'` to navigate to the build folder. (This folder path will of course look different on your end.)
+2. Enter `cd '/home/kjb3/D1V1/Documents/!Dell64docs/Programming/CPP/cpp_tttb/build'` to navigate to the build folder. (This folder path will of course look different on your end--but it should end in build/, not cpp_tttb or whatever your root TTTB folder is called.)
+
+The Mac steps look very similar; you'll just need to search for your Terminal app if it's not already present within your taskbar. 
 
 On Windows, I would instead press the Windows button, then enter `cmd` to bring up the command prompt. I would then enter `cd` followed by the path to my build folder (perhaps encased in double quotes).
 
@@ -98,11 +102,22 @@ Once you've completed these steps, you should see the following welcome screen:
 
 ![](Screenshots/Initial_Menu.png)
 
-### Playing Type Through the Bible
+*However*, things are a bit trickier on OSX. When you launch the game *for the first time*, you'll see a box pop up with the message "tttb Not Opened." Here's how you can resolve this issue: 
 
-Type Through the Bible offers both single-player and multiplayer gameplay modes. 
+a. Click on the question mark on the top right of this box to open another window with the title "Apple can't check app . . . ". 
+b. Select 'Open Privacy & Security settings for me' within this window. 
+c. Close the "Apple can't check app" window; hit 'Done' on the original "tttb Not Opened" box; and then, within the Privacy & Security Settings window; select the 'Allow Anyway' option next to the "'tttb' was blocked" message.
+d. Within your terminal, re-enter the `./tttb` command. (You should be able to get back to it by pressing the up arrow.) You'll now see an "Open 'tttb'?" window come up.
+e. Click "Open anyway", then enter your account password. 
+f. You're almost done! You'll likely see a "zsh: segmentation fault" message appear in your terminal. If this occurs, simply enter './tttb' in your terminal one more time, and you should finally be able to enter the game.
 
-#### Single-player gameplay
+Thankfully, during subsequent gameplay sessions, you should *not* need to repeat this process. *However*, at the end of your first session, you'll need to repeat the same steps for the tttb_py_complement executable that gets called to run Python-based data visualization scripts. (After you've completed these steps once, you shouldn't need to perform them again.)
+
+An alternative to all these steps is to download the GitHub clone of TTTB and compile both the C++ and Python code yourself. (See Compilation instructions section below for more details.)
+
+[Note: Windows may also prompt you for your approval before allowing TTTB, or the tttb_py_complement.exe executable, to run. You should only need to do this a few times, but if you keep getting prompted for different Python libraries, let me know by creating a new issue. I can then replace the existing Windows Pyinstaller setup with a single-file setup that I use for the OSX release.]
+
+### Single-player gameplay
 
 To launch single-player games, press 's' within the welcome screen. You'll then be presented with a number of different single-player modes from which to choose:
 
@@ -122,20 +137,74 @@ automatically get directed to the verses that follow it.
 
 **Note:** You can exit out of any test, even in marathon mode, by pressing Ctrl+C (not to be confused with Command+C). ***Do not*** simply exit out of the terminal, as your progress then won't be saved.
 
-#### Running typing tests
+**Running typing tests**
+
+Within each game mode, you'll be presented with one or more tests. Each of these tests will consist of a single Bible verse that you'll need to type. Unless you're in one of the two 'marathon' modes, you'll have the chance to review the verse before you begin typing it:
+
+![](Screenshots/Beginning_John_1_1.png)
+
+Once you press the space bar, the test's timing clock will start and you'll be able to begin typing. This timing clock will end automatically once you have typed the verse correctly. (In other words, you won't need to press 'Enter' after the test is over.)
+
+You'll get color-coded feedback as you progress through the test. As long as you've typed the verse correctly, your response will be highlighted in green:
+
+![](Screenshots/Correct_response.png)
+
+However, if you make a typo (even as minor as an extra space), your response will turn magenta in color:
+
+![](Screenshots/Typo.png)
+
+Once you correct the typo (e.g. by hitting backspace), the text will turn green again.
+
+**Important**: To clear out an entire mistyped word, press Alt + Backspace on Linux and Windows or Fn + Delete on OSX. (I would have liked to make Ctrl + Backspace an option for Linux and Windows, and Command + Delete an option for OSX, but I had trouble implementing these options using the cpp-terminal library; it's possible that they might be added in in a future update.)
+
+After you finish the verse, you'll get feedback on how long it took you type the text; your WPM (defined as ((characters in the verse) / (time, in seconds, you needed to complete the test)) * 60 / 5; and your error rates. 
+
+![](Screenshots/John_1_1_Completed.png)
+
+**Understanding error rates**
+
+TTTB keeps track of two error rates for each verse: one that counts backspaces (which, while not necessarily errors, will still affect your final typing speed), and one that doesn't. The denominator for each rate is the number of characters in the verse. Thus, an error rate of 0.05 means that you had 5 erroneous keypresses for every 100 characters. 
+
+Once you're ready to quit out of the game, press 'e'. Your results will then be saved to .csv files.
+
+![](Screenshots/Exiting_Single_Player_Game_Part_1.png)
+
+You'll then have the opportunity to call a Python script that will create interactive visualizations of these results. This shouldn't take terribly long, but if you're in a rush and/or have completed massive numbers of tests, you may not want to call it right now. (You can always call it later; since the script retrieves its data from the .csv files in the Files/ folder, which *always* get updated following a successful exit from single-player mode, declining to visualize your results at this time won't cause any data to get lost.)
+
+![](Screenshots/Exiting_Single_Player_Game_Part_2.png)
+
+
+**Autosave files**
+Every 10 races, TTTB will automatically save test-level and word-level results, along with an updated copy of your CPDB_for_TTTB.csv file, to your Files/ folder. If the game happens to crash, *and* you have completed at least 10 races, you *may* want to:
+
+1. Manually add the data in autosaved_test_results.csv and autosaved_word_results.csv to your main word_results.csv and test_results.csv files. (This will involve opening up both sets of files, then copying the rows from the autosave file into the bottom of the main files.)
+
+3. Replace CPDB_for_TTTB.csv with autosaved_CPDB_for_TTTB.csv.
+
+If, on the other hand, you haven't completed at least 10 races, you *won't* want to copy in these autosave files, as they will reflect data from previous sessions.
+
+
+
+
+### Multiplayer gameplay
 
 [To be completed soon!]
 
-#### Multiplayer gameplay
-
-[To be completed soon!]
-
-#### Converting single-player data to multiplayer data (and vice versa)
+### Converting single-player data to multiplayer data (and vice versa)
 TTTB also lets you combine various copies of results from different computers into a single multiplayer file that you can then analyze.
 
 [To be continued!]
 
 
+## Analyzing your results
+
+[To be completed soon!]
+
+### CSV files
+
+[To be completed soon!]
+
+### HTML-based interactive charts
 
 [To be completed soon!]
 
@@ -161,17 +230,19 @@ These instructions should work for Linux, OSX, and Windows. Please let me know i
 
 7. Next, you'll need to build an executable version of the tttb_py_complement.py file. First, download [Pyinstaller](https://pyinstaller.org/en/stable/) if you don't have it already. Also, download Python (i.e. via [Miniforge](https://github.com/conda-forge/miniforge) if it's not already on your system.
 
-8. Make sure that Pandas, Numpy, and Plotly are all installed within the Python environment that you plan to use to run Pyinstaller. (These can be downloaded via conda-forge.) Otherwise, the executable version of your tttb_py_complement.py file won't work correctly.
+8. Make sure that **Pandas**, **Numpy**, and **Plotly** are all installed within the Python environment that you plan to use to run Pyinstaller. (These can be downloaded via conda-forge.) Otherwise, the executable version of your tttb_py_complement.py file won't work correctly.
 
 *Note*: You may also want to install JupyterLab (e.g. via `conda install jupyterlab`) so that you can modify, if needed, the .ipynb notebooks contained within the source code. (Just make sure to export these updated notebooks to a .py file so that they can get processed correctly by create_release_folder.py and your pyinstaller call.)
 
 10. Once you have Python and Pyinstaller set up, run `pyinstaller tttb_py_complement.py` within TTTB's 'build' folder. This will create an executable version of this file, along with  an '_internal' folder that contains important library components, into a 'dist/tttb_py_complement subfolder' within your 'build' folder. **Cut and paste both the _internal folder and the tttb_py_complement executable into your build folder, as that's where the program will look for them.**
 
-*Note*: If you encounter issues with Pyinstaller, consider creating a *new* conda environment that contains *only* the libraries required for the code to run (e.g. not even JupyterLab); downloading the latest copies of all libraries; and then rerunning your Pyinstaller command. 
+*Note*: If you encounter issues with Pyinstaller, consider creating a *new* conda environment that contains *only* the libraries required for the code to run (e.g. not even JupyterLab); downloading the latest copies of all libraries; and then rerunning your Pyinstaller command from within that conda environment.
 
 10. Navigate up to the main cpp_tttb folder (e.g. via `cd ..` in your terminal, assuming you're still in the build folder) and run the `create_release_folder.py` Python file. This will create a new copy of TTTB with blank output files rather than the existing files within the TTTB directory.
 
 *Note*: This file also has code that can help automate the process of building and (where necessary) moving your C++ and Python executables. (For instance, you can pass 'both' as a corresponding argument to the file rather than 'neither,' the default, in order to comopile the executables. See the source code for more documentation and details.) However, I strongly recommend performing these steps outside of this file the first time around so that you can more easily identify and debug any issues.
+
+Also note that, in order for the Python compilation steps within create_release_folder.py to work correctly, your base Python environment (and not just the environment from which you're calling this script) *may* need to have relatively recent versions of Numpy, Pandas, and Plotly. If this isn't feasible on your end, you can run Pyinstaller separately to create the executable as described earlier in this walkthrough.
 
 11. You should now be able to begin playing TTTB!
 

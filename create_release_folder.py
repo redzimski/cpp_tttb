@@ -3,17 +3,21 @@
 
 # # Script for creating folders that can store Linux, Windows, and Mac TTTB releases
 # 
-# Using this script makes it easier to quickly and accurately copy the files needed for a TTTB release into a folder that can then get zipped and uploaded to itch.io.
-# 
 # By Ken Burchfiel
 # 
 # Released under the MIT License
 # 
-# (Note: Before running this code, make sure that the latest copy of your Pyinstaller-based tttb_py_complement executable, along with its '_internal' folder, have been moved from build/dist/tttb_py_complement to build/. You can automate this process using the code in pyinstaller_commands.txt, but these will need to be updated to match your own computer's directory layout (as will this file).
+# This script makes it easier to quickly and accurately copy the files needed for a TTTB release into a folder that can then get zipped and uploaded to itch.io. You can also use it to create executable versions of the tttb.cpp and/or tttb_py_complement.py files; see argument parsing code below for more details.
+# 
+# (Note: Before running this code, make sure that the latest copy of your Pyinstaller-based tttb_py_complement executable, along with its '_internal' folder (if applicable), have been moved from build/dist/tttb_py_complement to build/. Disregard this note if you're using this script to build that executable, though, as in that case this step will get taken care of automatically.)
+# 
+# Also note that, in order for this script to successfully build the Pyinstaller executable, your base Python environment (and not just the environment from which you're calling this script) *may* need to have relatively recent versions of Numpy, Pandas, and Plotly. 
 
 # In[1]:
 
 
+import time
+start_time = time.time()
 import os
 import shutil
 import platform
@@ -75,7 +79,7 @@ if notebook_exec == False:
     args = parser.parse_args()
     files_to_compile = args.files_to_compile
 else:
-    files_to_compile = 'neither'
+    files_to_compile = 'neither' 
 
 # Determining, based on the argument passed to files_to_compile,
 # which source code files to compile:
@@ -136,12 +140,17 @@ os.getcwd()
 
 if compile_cpp == True:
     print("Now compiling tttb.cpp.")
+    # For documentation on subprocess.run() and check_returncode(),
+    # see: https://docs.python.org/3/library/subprocess.html#subprocess.run 
     compile_cpp_output_1 = subprocess.run("cmake ..", shell=True, 
-                            capture_output = True, check=True)
+                            capture_output = True)
+    print(compile_cpp_output_1)
+    compile_cpp_output_1.check_returncode()
     print(compile_cpp_output_1)
     compile_cpp_output_2 = subprocess.run("cmake --build .", shell=True,
-                            capture_output = True, check=True)
+                            capture_output = True)
     print(compile_cpp_output_2)
+    compile_cpp_output_2.check_returncode()
     # Linux and Mac place the executable directly within the build folder;
     # meanwhile, Windows (at least with the compiler I'm using) places it
     # within a 'Debug' subfolder. Therefore, I added in the following
@@ -168,19 +177,39 @@ if compile_py == True:
     print("Now compiling tttb_py_complement.py.")
     # The -y argument in the following call will allow any existing
     # material within the output folder to get deleted and replaced.
+
+    if current_os == 'osx': # For the OSX release, I'll store the entire
+        # Pyinstaller package as a single file via the --onefile argument. 
+        # This makes for a slower load time
+        # than the default method (which creates both a main Python binary
+        # and an _internal folder for library-related files), but it
+        # dramatically reduces the amount of programs that the user
+        # will need to manually authorize.
+        # See https://pyinstaller.org/en/stable/usage.html for details
+        # on both the --onefile argument and the --noconfirm argument
+        # (which eliminates the need to authorize Pyinstaller's
+        # overwriting dist folder files.)
+        
+        pyinstaller_subprocess_command = "pyinstaller \
+tttb_py_complement.py --noconfirm --onefile"
+    else:
+        pyinstaller_subprocess_command = "pyinstaller \
+tttb_py_complement.py --noconfirm"
     compile_py_output = subprocess.run(
-        "pyinstaller tttb_py_complement.py -y", shell = True, 
+        pyinstaller_subprocess_command, shell = True, 
         capture_output = True, check = True)
     print(compile_py_output)
     # Copying tttb_py_complement binary and its corresponding
     # _internal folder into the build folder (where the C++ program expects
     # to find it):
-    if '_internal' in os.listdir():
-        shutil.rmtree('_internal')
-    # Based on datainsight's StackOverflow
-        # answer at https://stackoverflow.com/a/70075600/13097194 
-    shutil.copytree(
-        'dist/tttb_py_complement/_internal', '_internal')
+    if current_os != 'osx': # No _internal folder will be created for OSX
+        # releases, so we should skip the following steps.
+        if '_internal' in os.listdir():
+            shutil.rmtree('_internal')
+        # Based on datainsight's StackOverflow
+            # answer at https://stackoverflow.com/a/70075600/13097194 
+        shutil.copytree(
+            'dist/tttb_py_complement/_internal', '_internal')
     # Note that shutil.copy() will overwrite the existing copy of the file
     # (if any) in the destination folder with the new copy; see
     # https://docs.python.org/3/library/shutil.html#shutil.copy
@@ -278,12 +307,13 @@ shutil.copy(f'build/{python_binary}',
             release_folder+f'build/{python_binary}')
 # For details on shutil.copytree, see 
 # https://docs.python.org/3/library/shutil.html
-shutil.copytree('build/_internal', release_folder+'build/_internal')
+if current_os != 'osx':
+    shutil.copytree('build/_internal', release_folder+'build/_internal')
 
 
 # Copying Markdown and PDF versions of Readme over to release folder:
 # 
-# (I commented out this option because I decided to share the Readme as a separate file instead. That way, I wouldn't have to create new zip files of release folders, each hundreds of megabytes in size, for distribution on itch.io just because I updated the game's instructions.)
+# (I commented out this option because I decided to share the Readme as a separate file instead. That way, I wouldn't have to create new zip files of release folders, each 75+ megabytes in size, for distribution on itch.io just because I updated the game's instructions.)
 
 # In[20]:
 
@@ -297,6 +327,8 @@ shutil.copytree('build/_internal', release_folder+'build/_internal')
 # In[21]:
 
 
-print(f"Finished running the create_release_folder script. A \
-Clean copy of TTTB can now be found at:\n{release_folder}")
+end_time = time.time()
+print(f"Finished running the create_release_folder script \
+in {round(end_time - start_time, 3)} seconds. A \
+clean copy of TTTB can now be found at:\n{release_folder}")
 

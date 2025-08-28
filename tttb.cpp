@@ -2111,15 +2111,18 @@ this rare accomplishment!"
     // within config.csv:
     // (These settings can be updated within the game as needed.)
 
-
-
     Game_Config gcf = initialize_game_config("SP");
 
     std::string user_response = "";
     bool marathon_mode = false;
-    bool show_update_within_run_test = false; // If set to true,
-    // progress updates will be shown within run_test; otherwise,
-    // they will be shown within the following loop.
+    bool show_results_before_test_starts = false; // If set to true,
+    // results and progress updates will be shown in run_test() before
+    // the test begins; otherwise, they will be shown within the 
+    // following loop. (Elements of the following loop will be skipped
+    // for certain game modes, such as N; thus, I needed to add in a
+    // variable that would instruct the game to instead show these results
+    // within run_test so that the user could keep better track of his/
+    // her progress within such modes.)
 
     std::vector<double> session_wpm_results = {}; // Stores all WPM values
     // from tests completed during this session (which will allow us
@@ -2142,7 +2145,7 @@ this rare accomplishment!"
         if (marathon_mode == false)
         {
 
-            if ((show_update_within_run_test == true) || (
+            if ((show_results_before_test_starts == true) && (
                 within_session_test_number >= 1)) {
             // In this case,
             // the user won't be able to view the normal
@@ -2150,6 +2153,13 @@ this rare accomplishment!"
             // instead. (This message also shows the verse code
             // in order to clarify, in the result of a canceled 
             // test, the verse to which this result belongs.)
+
+            // If show_results_before_test_starts is instead set to False,
+            // a similar message will be displayed after the test is 
+            // finished, so we won't append this text to 
+            // progress_message (as doing so would create redundant
+            // output).
+            
             progress_message += "You typed " + trrv.back(
 ).verse_code + ", a(n) " + std::to_string(
 trrv.back().characters) + "-character verse, \
@@ -2216,7 +2226,7 @@ races is " + std::to_string(last_10_wpm_mean) + ".\n";
         background_color_codes[within_session_test_number % 16] +
         background_color_suffix;
 
-        if (show_update_within_run_test == false) // In this case,
+        if (show_results_before_test_starts == false) // In this case,
         // we'll display the progress message here rather than
         // within the next run_test() call.
             {Term::cout << progress_message << std::endl;
@@ -2234,10 +2244,10 @@ Press 'h' for descriptions of these options." << std::endl;
         if ((user_response == "N") || (user_response == "C") ||
         (user_response == "I"))
     {
-        show_update_within_run_test = true;}
+        show_results_before_test_starts = true;}
     else
     {
-        show_update_within_run_test = false;}
+        show_results_before_test_starts = false;}
 
         if (user_response == "h") // This choice will display more 
         // information about each game mode; the user will then 
@@ -2284,7 +2294,7 @@ mode, by pressing Ctrl+C." << std::endl;
                 // (It may not actually be necessary to set 
                 // marathon_mode to false here, but it likely 
                 // won't hurt to include this code just in case.)
-                show_update_within_run_test = false; 
+                show_results_before_test_starts = false; 
                 // Resetting this boolean to false so that the user 
                 // can pick a new gameplay code
             }
@@ -2364,7 +2374,7 @@ such as 'i', which will allow you to type a specific verse."
                            << std::endl;
                 marathon_mode = false; // Exiting marathon mode in order to prevent
                 // an infinite dialog loop from occurring
-                show_update_within_run_test = false;
+                show_results_before_test_starts = false;
             }
             else
             {
@@ -2398,7 +2408,7 @@ from which to start this mode." << std::endl;
             // including trrv and wrrv, to get updated directly within
             // the function.
             std::string within_test_update_message = "";
-            if (show_update_within_run_test == true)
+            if (show_results_before_test_starts == true)
                 {within_test_update_message = progress_message;}
 
 
@@ -2418,7 +2428,7 @@ from which to start this mode." << std::endl;
             if (completed_test == false)
             {
                 marathon_mode = false;
-                show_update_within_run_test = false;
+                show_results_before_test_starts = false;
             }
 
             if (completed_test == true)
@@ -2496,6 +2506,9 @@ if (sp_stats_update_response == "y")
 // In order to determine how to write the upcoming system call,
 // we'll need to see whether our code is running on
 // Windows. 
+
+Term::cout << "Calling Python script. (This can take \
+a little while.)" << std::endl;
 
 std::string system_call = py_complement_name + " spv spare_arg"; 
 
@@ -3043,6 +3056,9 @@ mp_stats_update_response = get_single_keypress({"y", "n"});
 if (mp_stats_update_response == "y")
 {
 
+Term::cout << "Calling Python script. (This can take \
+a little while.)" << std::endl;
+
 std::string system_call = (
     py_complement_name + " mpv " + multiplayer_start_time_as_string);
 // For security purposes, only the timestamp (rather than
@@ -3337,6 +3353,8 @@ std::string result_combination_confirmation = (
 if (result_combination_confirmation == "y")
 
 {
+Term::cout << "Calling Python script. (This can take \
+a little while.)" << std::endl;
 std::string system_call = py_complement_name + " mpfc " + verse_ids;
 
 try
