@@ -9,6 +9,8 @@ Released under the MIT License
 
 [Link to game download page on Itch.io](https://kburchfiel.itch.io/tttb-cpp) (password: `microseconds`)
 
+[Link to gameplay demo video](https://youtu.be/ZrADleJG3SA)
+
 [Note: this Readme is still a work in progress, and many sections are still incomplete. More information will be provided soon!]
 
 ![](Screenshots/Genesis_1_new_menu.png)
@@ -228,23 +230,21 @@ These instructions should work for Linux, OSX, and Windows. Please let me know i
 
 6. Use CMake to build TTTB. (See above steps for reference if needed.) Once it has been build, copy the resulting executable (e.g. `tttb` or `tttb.exe` on Windows) into your build folder. (Windows will likely place it into a separate subfolder, but it must be placed within your main build folder in order for the relative paths used by the program to work correctly.) 
 
-7. Next, you'll need to build an executable version of the tttb_py_complement.py file. First, download [Pyinstaller](https://pyinstaller.org/en/stable/) if you don't have it already. Also, download Python (i.e. via [Miniforge](https://github.com/conda-forge/miniforge) if it's not already on your system.
+7. Next, you'll need to build an executable version of the tttb_py_complement.py file; this can be accomplished via Pyinstaller. First, you'll want to download [Pyinstaller](https://pyinstaller.org/en/stable/) if you don't have it already. Also, download Python (i.e. via [Miniforge](https://github.com/conda-forge/miniforge) if it's not already on your system.
 
-8. Make sure that **Pandas**, **Numpy**, and **Plotly** are all installed within the Python environment that you plan to use to run Pyinstaller. (These can be downloaded via conda-forge.) Otherwise, the executable version of your tttb_py_complement.py file won't work correctly.
+8. Make sure that **Pandas**, **Numpy**, and **Plotly** are all installed within the Python environment that you plan to use to run Pyinstaller. It's helpful, but not necessary (to the best of my knowledge), to have them within your base environment. (These can be downloaded via conda-forge.) Otherwise, the executable version of your tttb_py_complement.py file won't work correctly.
 
 *Note*: You may also want to install JupyterLab (e.g. via `conda install jupyterlab`) so that you can modify, if needed, the .ipynb notebooks contained within the source code. (Just make sure to export these updated notebooks to a .py file so that they can get processed correctly by create_release_folder.py and your pyinstaller call.)
 
-10. Once you have Python and Pyinstaller set up, run `pyinstaller tttb_py_complement.py` within TTTB's 'build' folder. This will create an executable version of this file, along with  an '_internal' folder that contains important library components, into a 'dist/tttb_py_complement subfolder' within your 'build' folder. **Cut and paste both the _internal folder and the tttb_py_complement executable into your build folder, as that's where the program will look for them.**
+10. Once you have Python and Pyinstaller set up, first activate your environment of choice within your terminal (e.g. by running `conda activate tttb_env`; replace 'tttb_env' with whatever your environment name happens to be.) Next, navigate to TTTB's 'build' folder and run `pyinstaller tttb_py_complement.py`. This will create an executable version of this file, along with an '_internal' folder that contains important library components, into a 'dist/tttb_py_complement subfolder' within your 'build' folder. **Cut and paste both the _internal folder and the tttb_py_complement executable into your build folder, as that's where the program will look for them.**
 
-*Note*: If you encounter issues with Pyinstaller, consider creating a *new* conda environment that contains *only* the libraries required for the code to run (e.g. not even JupyterLab); downloading the latest copies of all libraries; and then rerunning your Pyinstaller command from within that conda environment.
+*Note*: If you encounter issues with Pyinstaller, consider (1) creating a brand new conda environment that contains *only* the latest copies of the libraries required for the code to run (i.e. Pyinstaller, Numpy, Pandas, and Plotly) and their dependents, then (2) rerunning your Pyinstaller command from within that conda environment. (I've found, based on my tests, that Pyinstaller will use the versions of the libraries present within the conda environment from which you activate it. Therefore, if your base environment is giving you trouble, simply create a new environment instead.)
 
-10. Navigate up to the main cpp_tttb folder (e.g. via `cd ..` in your terminal, assuming you're still in the build folder) and run the `create_release_folder.py` Python file. This will create a new copy of TTTB with blank output files rather than the existing files within the TTTB directory.
+10. Navigate up to the main cpp_tttb folder (e.g. via `cd ..` in your terminal, assuming you're still in the build folder) and run `python create_release_folder.py neither`. This will create a new copy of TTTB with blank output files rather than the existing files within the TTTB directory.
 
-*Note*: This file also has code that can help automate the process of building and (where necessary) moving your C++ and Python executables. (For instance, you can pass 'both' as a corresponding argument to the file rather than 'neither,' the default, in order to comopile the executables. See the source code for more documentation and details.) However, I strongly recommend performing these steps outside of this file the first time around so that you can more easily identify and debug any issues.
+*Note*: The create_release_folder.py file also contains code that can help automate the process of building and (where necessary) moving your C++ and Python executables. (For instance, you can pass `both` as a corresponding argument to the file rather than `neither`, the default, in order to compile the executables. See the source code for more documentation and details.) However, I strongly recommend performing these steps outside of this file the first time around so that you can more easily identify and debug any issues. Also note that, if you set 'both' or 'py' as your argument, you'll want to call this script within the Python environment that you want to use for Pyinstaller.)
 
-Also note that, in order for the Python compilation steps within create_release_folder.py to work correctly, your base Python environment (and not just the environment from which you're calling this script) *may* need to have relatively recent versions of Numpy, Pandas, and Plotly. If this isn't feasible on your end, you can run Pyinstaller separately to create the executable as described earlier in this walkthrough.
-
-11. You should now be able to begin playing TTTB!
+11. You should now be all set to begin playing TTTB!
 
 ## Development Notes
 

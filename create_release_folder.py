@@ -58,7 +58,7 @@ except:
     pass
 
 notebook_exec
-    
+
 
 
 # In[5]:
@@ -74,12 +74,12 @@ if notebook_exec == False:
     # only the tttb_py_complement.py file; and 'neither' to 
     # skip all compilation processes (which you might want to select
     # if you've already compiled the latest versions.)
-    
+
     parser.add_argument("files_to_compile", default='neither')
     args = parser.parse_args()
     files_to_compile = args.files_to_compile
 else:
-    files_to_compile = 'neither' 
+    files_to_compile = 'both' # neither 
 
 # Determining, based on the argument passed to files_to_compile,
 # which source code files to compile:
@@ -168,7 +168,7 @@ else:
 # 
 # I also found that, at least within Windows, the following code took quite a while to run. I was able to get pyinstaller to build the library within my base environment in around 5-6 minutes, but after 17 minutes, this cell still hadn't finished. Therefore, you might want to take care of the following steps yourself, then select 'cpp' or 'neither' as your argument for this code rather than 'both' or 'py.'
 # 
-# (The code didn't take very long at all to execute within Linux, on the other hand.)
+# (The code took around 40 seconds to execute within Linux, on the other hand.)
 
 # In[12]:
 
@@ -189,7 +189,7 @@ if compile_py == True:
         # on both the --onefile argument and the --noconfirm argument
         # (which eliminates the need to authorize Pyinstaller's
         # overwriting dist folder files.)
-        
+
         pyinstaller_subprocess_command = "pyinstaller \
 tttb_py_complement.py --noconfirm --onefile"
     else:
