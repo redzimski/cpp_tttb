@@ -490,7 +490,7 @@ type -1 followed by Enter." << std::endl;
             }
             else
             {
-                Term::cout << "That is not a valid ID. \
+                Term::cout << "\nThat is not a valid ID. \
 Please try again." << std::endl;
                 // return -1;
             }
@@ -1394,7 +1394,7 @@ current configuration settings:\nPlayer: '"
 
         config_response = cooked_input_within_raw_mode();
         // Checking the value of config_response for debugging purposes:
-        Term::cout << "Value of config_response:\n"
+        Term::cout << "\nValue of config_response:\n"
                    << config_response << std::endl;
 
         // Checking to see whether the user wishes to exit:
@@ -2656,7 +2656,7 @@ entered, type 'c' and hit Enter." << std::endl;
         {
             if (player_names.size() < 1)
             {
-            Term::cout << "Please enter at least \
+            Term::cout << "\nPlease enter at least \
 one player name." << std::endl;}
             continue;
         } // This check prevents 'c' from being added
@@ -2737,7 +2737,7 @@ include " << multiplayer_rounds * player_names.size() *
 tests_per_round << " tests in total." << std::endl;
 
     Term::cout << "\nNext, type a tag to incorporate into the \
-filename that will store your game , then hit Enter. \
+filename that will store your game, then hit Enter. \
 (This step is optional; hit Enter to skip it.) The tag should \
 be 16 or fewer characters and should not have \
 any spaces." << std::endl;
@@ -3093,7 +3093,7 @@ enter just 20250723T224940_testmpspimport ." << std::endl;
 
 std::string mp_timestamp_and_tag = cooked_input_within_raw_mode();
 
-Term::cout << "Next, enter the EXACT name of the player, as shown \
+Term::cout << "\nNext, enter the EXACT name of the player, as shown \
 within the multiplayer results file, whose results you wish to \
 import into your main single-player file." << std::endl;
 
@@ -3132,7 +3132,7 @@ long session_number = test_and_session_numbers["session_number"] + 1;
 std::vector<Test_Result_Row> original_mp_trrv = import_test_results(
     mp_test_results_filename);
 
-Term::cout << "Finished importing multiplayer test result data \
+Term::cout << "\nFinished importing multiplayer test result data \
 from:\n" << mp_test_results_filename << std::endl;
 
 // Loading Bible verse data: (This file will get updated with the 
@@ -3397,10 +3397,9 @@ std::string py_complement_name = "";
     for (int i = 0; i < background_color_codes.size(); i++)
     {Term::cout << background_color_prefix + 
     background_color_codes[i] + background_color_suffix;}
-    Term::cout << std::endl << "Welcome to Version 1.0 of the \
-C++ Edition of \
-Type Through the Bible!\nPlease review the Readme for important \
-gameplay instructions." << std::endl;
+    Term::cout << std::endl << "Welcome to Version 1.01 of \
+Type Through the Bible (C++ Edition)!\nPlease review the README.pdf \
+file for important gameplay instructions." << std::endl;
 
     std::string game_exit_message = "Exiting Type Through \
 the Bible.";

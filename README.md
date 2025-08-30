@@ -7,11 +7,9 @@ Released under the MIT License
 
 [Link to GitHub repository](https://github.com/kburchfiel/cpp_tttb)
 
-[Link to game download page on Itch.io](https://kburchfiel.itch.io/tttb-cpp) (password: `microseconds`)
+[Link to game download page on Itch.io](https://kburchfiel.itch.io/tttb-cpp)
 
 [Link to gameplay demo video](https://youtu.be/ZrADleJG3SA)
-
-[Note: this Readme is still a work in progress, and many sections are still incomplete. More information will be provided soon!]
 
 ![](Screenshots/Genesis_1_new_menu.png)
 
@@ -21,9 +19,7 @@ Type Through the Bible (TTTB) allows you to practice your keyboarding skills by 
 
 ## Download instructions
 
-Linux, Windows, and Apple-Silicon OSX binaries of TTTB are available [at this page](https://kburchfiel.itch.io/tttb-cpp) on itch.io . Until the documentation for the game is more complete, the page will be password-protected; you can access it by entering the password `microseconds`. 
-
-The game is free to download, but donations (while not expected) are greatly appreciated.
+Linux, Windows, and Apple-Silicon OSX binaries of TTTB are available [at this page](https://kburchfiel.itch.io/tttb-cpp) on itch.io . The game is free to download, but donations (while not expected) are greatly appreciated.
 
 Make sure to download both the zipped folder for your operating system *and* the corresponding README (e.g. the file you're reading right now). Once you've unzipped the folder on your local computer, you can move it to a location of your choice--or simply keep it within the downloads folder. Nothing needs to be installed in order for you to begin playing the game.
 
@@ -64,13 +60,13 @@ cpp_tttb/ [the root folder for the game; your exact name may differ]
 
 --------Multiplayer/ [multiplayer results will be stored here.]
 
---------CPDB_for_TTTB.csv [A local copy of the Catholic Public Domain Bible. Your overall progress in typing through the entire Bible will get stored within this file.]
+--------CPDB_for_TTTB.csv 
 
 --------game_config.csv [This file stores default configuration options, such as your name and various gameplay tags.]
 
---------test_results.csv [This file provides detailed data on all of your test results, including WPM and accuracy data; start and end times; and verse-related information.]
+--------test_results.csv 
 
---------word_results.csv [This file provides word-level WPM and accuracy data.]
+--------word_results.csv 
 
 **----Visualizations/**
 
@@ -186,33 +182,140 @@ Every 10 races, TTTB will automatically save test-level and word-level results, 
 If, on the other hand, you haven't completed at least 10 races, you *won't* want to copy in these autosave files, as they will reflect data from previous sessions.
 
 
-
-
 ### Multiplayer gameplay
 
-[To be completed soon!]
+Type Through the Bible also supports multiplayer gameplay. There are two methods of performing multiplayer gameplay: single-computer and multi-computer. 
 
-### Converting single-player data to multiplayer data (and vice versa)
-TTTB also lets you combine various copies of results from different computers into a single multiplayer file that you can then analyze.
+**Single-computer multiplayer gameplay**
 
-[To be continued!]
+In this method, players will take turns typing on the same computer. This makes for a simpler setup, but is less efficient (at least for larger numbers of players) than the multi-computer setup that I'll discuss shortly. 
 
+To begin this mode, press 'm' within TTTB's start menu to launch a multiplayer game. You'll be prompted to specify (1) the names of each player; (2) the number of rounds, and tests within rounds, you'd like to play; and (3) the verse ID at which you'd like to begin the game. (There's also an option to type randomly-selected verses. Regardless of whether you wish to type consecutive or randomly-chosen verses, each player will type the exact same sequence of passages.)
+
+![](Screenshots/Multiplayer_1.png)
+
+Players will then take turns typing the series of Bible verses that you specified during setup. Text notifications will inform you who is typing; make sure to pay careful attention to them so that you don't accidentally type someone else's race (which I did once!).
+
+![](Screenshots/Multiplayer_2.png)
+
+Once the game ends, you'll get to see everyone's mean WPM; the player with the highest average WPM is the winner. The game will also (1) save a series of multiplayer results files to Files/Multiplayer and (2) ask whether you wish to create visualizations of these files.
+
+![](Screenshots/Multiplayer_3.png)
+
+**Multi-computer multiplayer gameplay**
+
+If you have lots of people who wish to play a multiplayer game, then it may be more efficient to use a multi-computer approach. That way, lots of people can play the game at the same time, and they can all compete on the keyboard that they're most comfortable with. (However, given that each player will need to download and install TTTB on their computer beforehand, and that you'll need to perform some additional steps to compile everyone's results, this method may not necessarily save time.)
+
+Here's how I recommend going about this method:
+
+1. Have every player launch a *single-player game* within Type The Bible.
+
+2. Decide the verse ID at which you would like to begin the test, then have each player select this ID within the 'I' single-player mode. (This mode, not to be confused with 'i' mode, begins at a specified verse, then automatically presents the tests that follow this verse--whether or not the player has typed them already. This helps ensure that each player will be typing the exact same set of tests--which will be crucial for your subsequent analyses to be valid.)
+
+3. You'll also want to decide how many verses total to type. I recommend choosing a number that's a multiple of 10, since this will make the process of sharing results a bit easier. (You'll learn why shortly.)
+
+4. Once players have finished typing their verses, they should all add their results *for only the races they just typed* to the same folder. This could be an online storage folder; a flash drive; or even a network-attached storage setup. (If your total test count is a multiple of 10, players can simply share their most recent autosave folder, which should contain only the races they just typed. Otherwise, they can simply cut and paste their results into a separate .csv file. Note that there's no need to include headers.)
+
+5. A designated player should then copy all of these test results into his/her 'Files/MP_Test_Result_Files_To_Combine' folder. Next, he/she should launch TTTB, then select 'c' within the game's start menu and follow the subsequent prompts. TTTB will then run some Python code that (1) converts the copies of multiplayer results into a single file and (2) runs the same visualizations script that it executes for single-computer multiplayer games.
+
+![](Screenshots/Combining_multiplayer_results.png)
+
+
+### Converting multiplayer data to single-player data
+You can also use the 'r' command within the start menu to import multiplayer results into your single-player results if you so choose. (This will be particularly helpful if you completed a long stretch of races within a multiplayer game; importing them into your single-player file will then allow them to count towards your overall progress in typing the entire Bible.)
+
+![](Screenshots/Adding_MP_Results_to_SP_Files.png)
 
 ## Analyzing your results
 
-[To be completed soon!]
+Type Through the Bible offers two main ways to review and evaluate your progress. The first are a series of .csv files that keep track of your results; the second are a set of interactive visualizations that make these results easier to interpret.
 
 ### CSV files
 
-[To be completed soon!]
+Your single-player data is stored in the following .csv files within your game's Files folder:
+
+1. 'test_results.csv' (This file provides detailed data on all of your test results, including WPM and accuracy data; start and end times; and verse-related information.)
+2.  'CPDB_for_TTTB.csv' (A local copy of the Catholic Public Domain Bible. This file shows the full text of each verse, typed or untyped, as well as (1) the number of times you've typed it and (2) your highest-ever WPM for each verse.
+3. 'word_results.csv' (This file provides WPM and accuracy data for each individual word that you typed within each test.)
+
+Meanwhile, your multiplayer result data for each session can be found within Files/Multiplayer. These files will be prefaced with a timestamp and (if provided) a custom string in order to make it easier to link each file to each individual multiplayer session.
+
+Test- and word-level results files are made available for each session, along with a simple '. . . pivot.csv') file that stores each player's mean WPM.
+
+**NOTE**: Be very careful when opening these files in Excel! I've found that Excel tends to automatically reformat dates within spreadsheets, then save those reformatted dates. These reformatted versions will most likely raise errors when you attempt to use them again. (As an alternative, I recommend LibreOffice Calc, which doesn't appear to attempt to reformat dates. You could also try opening the .csv files within a text editor (since, in the end, they're just text files) in order to further prevent any reformatting nightmares.
 
 ### HTML-based interactive charts
 
-[To be completed soon!]
+TTTB also provides many interactive, HTML-based visualizations of your results. These are created via a separate Python script that TTTB can call at the end of each single-player and multiplayer game. You can find these charts within the 'Multiplayer' and 'Single_Player' subfolders of the 'Visualizations' folder. 
 
-## Compilation instructions
+Because these visualizations are HTML-based, you can hover over bars and lines for more information; remove certain categories of lines/bars to focus on an area of interest; and also zoom in on particular parts of the graph.
 
-These instructions should work for Linux, OSX, and Windows. Please let me know if you encounter any issues.
+TTTB generates around 29 separate single-player visualizations and 4 multiplayer visualizations. They help you make sense of your average WPM; your accuracy; and your progress in typing through the whole Bible. 
+
+Here are some sample PNG screenshots: (Unlike the original HTML copies, these aren't interactive.)
+
+![](Screenshots/WPM_by_Race.png)
+
+![](Screenshots/progress_nominal.png)
+
+![](Screenshots/fastest_tests.png)
+
+![](Screenshots/mean_rolling_wpm_by_accuracy_bin.png)
+
+![](Screenshots/mean_WPM_by_accuracy_bin.png)
+
+![](Screenshots/words_with_highest_WPM.png)
+
+![](Screenshots/low_accuracy_words.png)
+
+![](Screenshots/mean_WPM_by_player.png)
+
+![](Screenshots/Mean_WPM_by_Player_and_Round.png)
+
+
+
+
+### Reporting issues
+
+I have completed over 1,400 tests on Type Through the Bible so far, along with quite a few multiplayer rounds. However, it's still possible (and perhaps, for a hobby project like this, likely) that bugs, typos, and other issues will appear.
+
+Please make me aware of any issues, large or small, by posting them within https://github.com/kburchfiel/cpp_tttb/issues . If you don't have a GitHub account, you can also email me at kburchfiel3@gmail.com . (Please include 'TTTB' in your subject so that I know your message is related to this game.)
+
+You are also welcome to use these channels to submit feature requests and improvements; however, since the time I have to work on this project is limited, I may not be able to implement your idea.
+
+## Development Notes
+
+I had created an earlier Bible typing game in Python, but given my interest in learning how to apply C++ to create games, I figured that a C++ version of this game would be a great learning opportunity. Although I didn't reference the Python version of this game when writing this code, my experiences with that project certainly influenced the current one.
+
+This project was a lot of fun to work on. While it doesn't feature a GUI, it *was* a good opportunity to for me to get reacquainted with C++--and to gain experience with importing and exporting CSV data. I hope that you enjoy playing it as much as I did coding it!
+
+As with my other GitHub projects, I chose not to use generative AI tools when creating Type Through the Bible. I wanted to learn how to perform these tasks in C++ (or in a C++ library) rather than simply learn how to get an AI tool to create them.
+
+This code also makes extensive use of the following
+open-source libraries:
+
+1. Vincent La's CSV parser (https://github.com/vincentlaucsb/csv-parser)
+2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)
+
+In addition, this program uses the Catholic Public Domain Version of the Bible that Ronald L. Conte put together. This Bible can be
+found at https://sacredbible.org/catholic/ I last updated my local copy of this Bible (whose text does get updated periodically) around June 10, 2025.
+
+## Acknowledgments
+
+I'd like to give special thanks to Ronald L. Conte Jr. for his work on the [Catholic Public Domain Version](https://sacredbible.org/catholic/) of the Bible (the translation that TTTB uses). 
+
+I am also grateful to Vincent La for [his excellent C++ csv parser](https://github.com/vincentlaucsb/csv-parser) and to the team behind the [cpp-terminal](https://github.com/jupyter-xeus/cpp-terminal) library. These two libraries play a major role in C++ TTTB. I'm also grateful to the Plotly team for their excellent [Python visualization library](https://github.com/plotly/plotly.py).
+
+Finally, this game is dedicated to my wife, Allie. I am very grateful for her patience and understanding as I worked to put it together! My multiplayer gameplay sessions with her (yes, she was kind enough to play it with me) also helped me refine the code and improve the OSX release.
+
+Blessed Carlo Acutis, pray for us!
+
+
+## Appendix: Compilation Instructions
+
+If you'd like to modify or build upon this game, you'll probably need to compile it first. (Note that there are two separate scripts that you'll need to compile: tttb.cpp, the game's main C++ file, and tttb_py_installer.py, a Python file.) 
+
+The following compilation instructions apply to Linux, OSX, and Windows, though the steps will differ slightly across platforms. Please let me know if you encounter any issues.
 
 1. Download [CMake](https://cmake.org/) if you haven't already.
 
@@ -240,39 +343,29 @@ These instructions should work for Linux, OSX, and Windows. Please let me know i
 
 *Note*: If you encounter issues with Pyinstaller, consider (1) creating a brand new conda environment that contains *only* the latest copies of the libraries required for the code to run (i.e. Pyinstaller, Numpy, Pandas, and Plotly) and their dependents, then (2) rerunning your Pyinstaller command from within that conda environment. (I've found, based on my tests, that Pyinstaller will use the versions of the libraries present within the conda environment from which you activate it. Therefore, if your base environment is giving you trouble, simply create a new environment instead.)
 
+**Here's a sample set of terminal commands that can help you accomplish these steps:**
+
+[Conda will need to be added to your path in order for the following step to work; this was probably already completed when you installed Miniforge.]
+
+a. `conda activate base`
+
+b. `conda create -n tttb_analysis python pandas numpy plotly pyinstaller`
+
+[After running the above code, make sure to enter 'y' after Conda asks whether you wish to download and install these packages (along with their dependencies.]
+
+c. `conda activate tttb_analysis`
+
+[Navigating to the location of the Git clone: (Replace this path with the path to your own Type Through the Bible root folder (which may differ from this one)].
+
+d. `cd C:\Users\kburc\Downloads\cpp_tttb\build`
+
+[Running pyinstaller:]
+
+e. `pyinstaller tttb_py_complement.py`
+
+
 10. Navigate up to the main cpp_tttb folder (e.g. via `cd ..` in your terminal, assuming you're still in the build folder) and run `python create_release_folder.py neither`. This will create a new copy of TTTB with blank output files rather than the existing files within the TTTB directory.
 
 *Note*: The create_release_folder.py file also contains code that can help automate the process of building and (where necessary) moving your C++ and Python executables. (For instance, you can pass `both` as a corresponding argument to the file rather than `neither`, the default, in order to compile the executables. See the source code for more documentation and details.) However, I strongly recommend performing these steps outside of this file the first time around so that you can more easily identify and debug any issues. Also note that, if you set 'both' or 'py' as your argument, you'll want to call this script within the Python environment that you want to use for Pyinstaller.)
 
-11. You should now be all set to begin playing TTTB!
-
-## Development Notes
-
-I had created an earlier Bible typing game in Python, but given my interest in learning how to apply C++ to create games, I figured that a C++ version of this game would be a great learning opportunity. Although I didn't reference the Python version of this game when writing this code, my experiences with that project certainly influenced the current one.
-
-This project was a lot of fun to work on. While it doesn't feature a GUI, it *was* a good opportunity to for me to get reacquainted with C++--and to gain experience with importing and exporting CSV data. I hope that you enjoy playing it as much as I did coding it!
-
-As with my other GitHub projects, I chose not to use generative AI tools when creating Type Through the Bible. I wanted to learn how to perform these tasks in C++ (or in a C++ library) rather than simply learn how to get an AI tool to create them.
-
-This code also makes extensive use of the following
-open-source libraries:
-
-1. Vincent La's CSV parser (https://github.com/vincentlaucsb/csv-parser)
-2. CPP-Terminal (https://github.com/jupyter-xeus/cpp-terminal)
-
-In addition, this program uses the Catholic Public Domain Version of the Bible that Ronald L. Conte put together. This Bible can be
-found at https://sacredbible.org/catholic/ I last updated my local copy of this Bible (whose text does get updated periodically) around June 10, 2025.
-
-## Acknowledgments
-
-I am grateful for Ronald L. Conte Jr. for his work on the [Catholic Public Domain Version](https://sacredbible.org/catholic/) of the Bible (the translation that TTTB uses).
-
-This game is dedicated to my wife, Allie. I am very grateful
-for her patience and understanding as I worked to put it 
-together! My multiplayer gameplay sessions with her (yes, she 
-was kind enough to play it with me) also helped me refine the
-code and improve the OSX release.
-
-Blessed Carlo Acutis, pray for us!
-
-[More acknowledgments to come!]
+11. Try launching the TTTB executable--if it works, congratulations! If not, double-check the steps and/or reach out to me with any questions.

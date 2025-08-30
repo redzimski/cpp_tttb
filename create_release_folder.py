@@ -202,21 +202,25 @@ tttb_py_complement.py --noconfirm"
     # Copying tttb_py_complement binary and its corresponding
     # _internal folder into the build folder (where the C++ program expects
     # to find it):
-    if current_os != 'osx': # No _internal folder will be created for OSX
-        # releases, so we should skip the following steps.
+    if current_os == 'osx':
+        shutil.copy(
+            f'dist/{python_binary}', 
+            f'{python_binary}')
+    else: # No _internal folder will be created for OSX
+        # releases, and the executable folder path will be different as well.
         if '_internal' in os.listdir():
             shutil.rmtree('_internal')
         # Based on datainsight's StackOverflow
             # answer at https://stackoverflow.com/a/70075600/13097194 
         shutil.copytree(
             'dist/tttb_py_complement/_internal', '_internal')
-    # Note that shutil.copy() will overwrite the existing copy of the file
-    # (if any) in the destination folder with the new copy; see
-    # https://docs.python.org/3/library/shutil.html#shutil.copy
-    # for details
-    shutil.copy(
-        f'dist/tttb_py_complement/{python_binary}', 
-        f'{python_binary}')
+        # Note that shutil.copy() will overwrite the existing copy of the file
+        # (if any) in the destination folder with the new copy; see
+        # https://docs.python.org/3/library/shutil.html#shutil.copy
+        # for details
+        shutil.copy(
+            f'dist/tttb_py_complement/{python_binary}', 
+            f'{python_binary}')
 else:
     print("Skipping the compilation process for tttb_py_complement.py.")
 
