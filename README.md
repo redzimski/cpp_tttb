@@ -1,4 +1,4 @@
-# Type Through the Bible (C++ Edition)
+# Type Through the Bible (C++ Edition) [Version 1.0.1]
 **A Typing Game of Biblical Proportions**
 
 By Ken Burchfiel
@@ -15,11 +15,11 @@ Released under the MIT License
 
 ## Introduction
 
-Type Through the Bible (TTTB) allows you to practice your keyboarding skills by typing the Bible verse by verse. It contains both single-player and multiplayer modes, and also offers (via a complementary Python script) a wide variety of interactive visualizations.
+Type Through the Bible (TTTB) allows you to practice your keyboarding skills by typing the Bible verse by verse. It contains both single-player and multiplayer modes; in addition, it offers (via a complementary Python script) a wide variety of interactive visualizations.
 
 ## Download instructions
 
-Linux, Windows, and Apple-Silicon OSX binaries of TTTB are available [at this page](https://kburchfiel.itch.io/tttb-cpp) on itch.io . The game is free to download, but donations (while not expected) are greatly appreciated.
+Linux, Windows, and Apple-silicon OSX binaries of TTTB are available [at this page](https://kburchfiel.itch.io/tttb-cpp) on itch.io . The game is free to download, but donations (while not expected) are greatly appreciated.
 
 Make sure to download both the zipped folder for your operating system *and* the corresponding README (e.g. the file you're reading right now). Once you've unzipped the folder on your local computer, you can move it to a location of your choice--or simply keep it within the downloads folder. Nothing needs to be installed in order for you to begin playing the game.
 
